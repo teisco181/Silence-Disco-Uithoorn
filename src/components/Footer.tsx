@@ -53,8 +53,16 @@ export const Footer: React.FC = () => {
               </li>
               <li>
                 <button
+                  onClick={() => setActiveTab('beschikbaarheid')}
+                  className="hover:text-cyan-400 transition-colors cursor-pointer"
+                >
+                  Beschikbaarheidskalender
+                </button>
+              </li>
+              <li>
+                <button
                   onClick={() => setActiveTab('hoe-werkt-het')}
-                  className="hover:text-cyan-400 transition-colors"
+                  className="hover:text-cyan-400 transition-colors cursor-pointer"
                 >
                   Hoe Werkt Het?
                 </button>

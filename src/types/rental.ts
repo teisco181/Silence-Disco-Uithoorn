@@ -15,8 +15,8 @@ export interface RentalSettings {
   pricePowerbank: number;
   shippingCostRoundtrip: number;
   defaultDeposit: number;
-  weekendSurchargeMultiplier: number; // e.g. 1.0 (free weekend) or 1.25
-  vatPercentage: number; // 21%
+  weekendSurchargeMultiplier: number;
+  vatPercentage: number;
 }
 
 export interface DealOffer {
@@ -42,6 +42,9 @@ export interface DealOffer {
 export interface RentalCart {
   headphonesCount: number;
   transmittersCount: number; // 1, 2, or 3
+  startDate: string; // YYYY-MM-DD
+  eventDate: string; // YYYY-MM-DD
+  returnDate: string; // YYYY-MM-DD
   rentalDays: number;
   isWeekend: boolean;
   discoLightsCount: number;
@@ -52,13 +55,19 @@ export interface RentalCart {
   promoCode: string;
 }
 
-export interface ReservationDetails {
+export type PaymentMethod = 'ideal' | 'creditcard' | 'bancontact' | 'invoice' | 'applepay';
+export type PaymentStatus = 'paid' | 'pending' | 'refunded' | 'cancelled';
+export type OrderStatus = 'confirmed' | 'prepared' | 'shipped' | 'returned';
+
+export interface BookingRecord {
   id: string;
   createdAt: string;
   customerName: string;
   email: string;
   phone: string;
+  startDate: string;
   eventDate: string;
+  returnDate: string;
   rentalDays: number;
   deliveryType: 'delivery' | 'pickup';
   address?: string;
@@ -67,6 +76,11 @@ export interface ReservationDetails {
   notes?: string;
   cart: RentalCart;
   pricingSummary: PricingCalculation;
+  paymentMethod: PaymentMethod;
+  paymentStatus: PaymentStatus;
+  selectedBank?: string;
+  transactionId: string;
+  orderStatus: OrderStatus;
 }
 
 export interface PricingCalculation {
@@ -88,4 +102,12 @@ export interface PricingCalculation {
   vatAmount: number;
   totalIncVat: number;
   pricePerPerson: number;
+}
+
+export interface DayAvailability {
+  date: string;
+  bookedCount: number;
+  availableCount: number;
+  totalStock: number;
+  status: 'available' | 'low' | 'sold_out';
 }

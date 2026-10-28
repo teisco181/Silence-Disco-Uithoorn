@@ -1,24 +1,35 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useMemo } from 'react';
 import {
   RentalSettings,
   DealOffer,
   RentalCart,
   PricingCalculation,
-  ReservationDetails,
+  BookingRecord,
+  OrderStatus,
+  PaymentStatus,
 } from '../types/rental';
 import {
   DEFAULT_RENTAL_SETTINGS,
   DEFAULT_OFFERS,
+  DEFAULT_BOOKINGS,
 } from '../data/defaultSettings';
 import { calculatePricing } from '../utils/pricingCalculator';
+import { checkRangeAvailability, getAvailabilityForDate } from '../utils/availability';
 
-export type ActiveTab = 'home' | 'aanbiedingen' | 'hoe-werkt-het' | 'beheer';
+export type ActiveTab = 'home' | 'aanbiedingen' | 'beschikbaarheid' | 'hoe-werkt-het' | 'beheer';
 
 interface RentalContextType {
   settings: RentalSettings;
   offers: DealOffer[];
+  bookings: BookingRecord[];
   cart: RentalCart;
   pricing: PricingCalculation;
+  availabilityCheck: {
+    isAvailable: boolean;
+    minAvailable: number;
+    bottleneckDate?: string;
+    bottleneckBooked?: number;
+  };
   activeTab: ActiveTab;
   setActiveTab: (tab: ActiveTab) => void;
   updateSettings: (newSettings: RentalSettings) => void;
@@ -29,6 +40,7 @@ interface RentalContextType {
   resetOffers: () => void;
   setHeadphonesCount: (count: number) => void;
   setTransmittersCount: (count: number) => void;
+  setDates: (startDate: string, eventDate: string, returnDate: string, isWeekend?: boolean) => void;
   setRentalDays: (days: number) => void;
   setIsWeekend: (isWeekend: boolean) => void;
   setDiscoLightsCount: (count: number) => void;
@@ -41,8 +53,11 @@ interface RentalContextType {
   isBookingModalOpen: boolean;
   openBookingModal: () => void;
   closeBookingModal: () => void;
-  confirmedReservation: ReservationDetails | null;
-  setConfirmedReservation: (reservation: ReservationDetails | null) => void;
+  addBooking: (booking: BookingRecord) => void;
+  updateBookingStatus: (id: string, orderStatus: OrderStatus, paymentStatus?: PaymentStatus) => void;
+  deleteBooking: (id: string) => void;
+  latestConfirmedBooking: BookingRecord | null;
+  setLatestConfirmedBooking: (booking: BookingRecord | null) => void;
   toastMessage: string | null;
   showToast: (msg: string) => void;
 }
@@ -51,8 +66,33 @@ const RentalContext = createContext<RentalContextType | undefined>(undefined);
 
 const SETTINGS_KEY = 'silentgroove_rental_settings_v1';
 const OFFERS_KEY = 'silentgroove_offers_v1';
+const BOOKINGS_KEY = 'silentgroove_bookings_v1';
+
+// Default initial dates (Upcoming Friday through Monday)
+const getInitialDates = () => {
+  const today = new Date();
+  // Find next Friday
+  const nextFriday = new Date(today);
+  const dayOfWeek = today.getDay(); // 0 is Sunday, 5 is Friday
+  const daysUntilFriday = (5 - dayOfWeek + 7) % 7 || 7;
+  nextFriday.setDate(today.getDate() + daysUntilFriday);
+
+  const eventSaturday = new Date(nextFriday);
+  eventSaturday.setDate(nextFriday.getDate() + 1);
+
+  const returnMonday = new Date(nextFriday);
+  returnMonday.setDate(nextFriday.getDate() + 3);
+
+  return {
+    startDate: nextFriday.toISOString().split('T')[0],
+    eventDate: eventSaturday.toISOString().split('T')[0],
+    returnDate: returnMonday.toISOString().split('T')[0],
+  };
+};
 
 export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const initialDates = useMemo(() => getInitialDates(), []);
+
   const [settings, setSettings] = useState<RentalSettings>(() => {
     try {
       const saved = localStorage.getItem(SETTINGS_KEY);
@@ -73,11 +113,24 @@ export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return DEFAULT_OFFERS;
   });
 
+  const [bookings, setBookings] = useState<BookingRecord[]>(() => {
+    try {
+      const saved = localStorage.getItem(BOOKINGS_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return DEFAULT_BOOKINGS;
+  });
+
   const [cart, setCart] = useState<RentalCart>({
     headphonesCount: 25,
     transmittersCount: 2,
-    rentalDays: 1,
-    isWeekend: false,
+    startDate: initialDates.startDate,
+    eventDate: initialDates.eventDate,
+    returnDate: initialDates.returnDate,
+    rentalDays: 3,
+    isWeekend: true,
     discoLightsCount: 1,
     powerbanksCount: 0,
     includeDJCables: true,
@@ -88,7 +141,7 @@ export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
-  const [confirmedReservation, setConfirmedReservation] = useState<ReservationDetails | null>(null);
+  const [latestConfirmedBooking, setLatestConfirmedBooking] = useState<BookingRecord | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -167,6 +220,55 @@ export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     showToast('Standaard aanbiedingen hersteld');
   };
 
+  // Booking operations
+  const addBooking = (booking: BookingRecord) => {
+    setBookings((prev) => {
+      const next = [booking, ...prev];
+      try {
+        localStorage.setItem(BOOKINGS_KEY, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+    setLatestConfirmedBooking(booking);
+    showToast(`Boeking #${booking.id} succesvol voltooid en betaald!`);
+  };
+
+  const updateBookingStatus = (id: string, orderStatus: OrderStatus, paymentStatus?: PaymentStatus) => {
+    setBookings((prev) => {
+      const next = prev.map((b) =>
+        b.id === id
+          ? {
+              ...b,
+              orderStatus,
+              ...(paymentStatus ? { paymentStatus } : {}),
+            }
+          : b
+      );
+      try {
+        localStorage.setItem(BOOKINGS_KEY, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+    showToast(`Boekingsstatus bijgewerkt naar "${orderStatus}"`);
+  };
+
+  const deleteBooking = (id: string) => {
+    setBookings((prev) => {
+      const next = prev.filter((b) => b.id !== id);
+      try {
+        localStorage.setItem(BOOKINGS_KEY, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+    showToast('Boeking verwijderd');
+  };
+
   // Cart operations
   const setHeadphonesCount = (count: number) => {
     const clamped = Math.max(
@@ -176,7 +278,7 @@ export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setCart((prev) => ({
       ...prev,
       headphonesCount: clamped,
-      appliedOfferId: null, // clear preset lock if user customized
+      appliedOfferId: null,
     }));
   };
 
@@ -186,6 +288,23 @@ export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       ...prev,
       transmittersCount: clamped,
       appliedOfferId: null,
+    }));
+  };
+
+  const setDates = (startDate: string, eventDate: string, returnDate: string, isWeekend = true) => {
+    // Calculate days between start and return
+    const start = new Date(startDate);
+    const end = new Date(returnDate);
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const days = Math.max(1, Math.round(diffTime / (1000 * 60 * 60 * 24)));
+
+    setCart((prev) => ({
+      ...prev,
+      startDate,
+      eventDate,
+      returnDate,
+      rentalDays: days,
+      isWeekend,
     }));
   };
 
@@ -231,7 +350,8 @@ export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const offer = offers.find((o) => o.id === offerId);
     if (!offer) return;
 
-    setCart({
+    setCart((prev) => ({
+      ...prev,
       headphonesCount: offer.headphonesCount,
       transmittersCount: offer.transmittersCount,
       rentalDays: offer.rentalDurationDays,
@@ -242,7 +362,7 @@ export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       deliveryType: 'delivery',
       appliedOfferId: offer.id,
       promoCode: '',
-    });
+    }));
     setActiveTab('home');
     showToast(`Aanbieding "${offer.title}" toegepast op de calculator!`);
   };
@@ -263,13 +383,26 @@ export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return calculatePricing(cart, settings, offers);
   }, [cart, settings, offers]);
 
+  // Compute availability for current cart selection
+  const availabilityCheck = useMemo(() => {
+    return checkRangeAvailability(
+      cart.startDate,
+      cart.returnDate,
+      cart.headphonesCount,
+      bookings,
+      settings.totalStockHeadphones
+    );
+  }, [cart.startDate, cart.returnDate, cart.headphonesCount, bookings, settings.totalStockHeadphones]);
+
   return (
     <RentalContext.Provider
       value={{
         settings,
         offers,
+        bookings,
         cart,
         pricing,
+        availabilityCheck,
         activeTab,
         setActiveTab,
         updateSettings,
@@ -280,6 +413,7 @@ export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         resetOffers,
         setHeadphonesCount,
         setTransmittersCount,
+        setDates,
         setRentalDays,
         setIsWeekend,
         setDiscoLightsCount,
@@ -292,8 +426,11 @@ export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         isBookingModalOpen,
         openBookingModal,
         closeBookingModal,
-        confirmedReservation,
-        setConfirmedReservation,
+        addBooking,
+        updateBookingStatus,
+        deleteBooking,
+        latestConfirmedBooking,
+        setLatestConfirmedBooking,
         toastMessage,
         showToast,
       }}

@@ -21,6 +21,8 @@ export const CalculatorSection: React.FC = () => {
     settings,
     cart,
     pricing,
+    availabilityCheck,
+    setDates,
     setHeadphonesCount,
     setTransmittersCount,
     setRentalDays,
@@ -305,22 +307,34 @@ export const CalculatorSection: React.FC = () => {
               </div>
             </div>
 
-            {/* Step 3: Huurperiode & Weekend Actie */}
-            <div className="p-6 bg-slate-950 rounded-2xl border border-slate-800 shadow-lg">
-              <div className="flex items-center gap-2.5 mb-4">
-                <div className="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-sm">
-                  3
+            {/* Step 3: Huurperiode, Datum & Beschikbaarheid */}
+            <div className="p-6 bg-slate-950 rounded-2xl border border-slate-800 shadow-lg space-y-5">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-sm">
+                    3
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white font-display">
+                      Huurperiode, Feestdatum & Beschikbaarheid
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Kies je feestdatum. Wij reserveren de koffer tijdig voor jouw evenement.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-lg font-bold text-white font-display">
-                    Huurperiode & Weekend Actie
-                  </h3>
-                  <p className="text-xs text-slate-400">
-                    Kies je evenementduur. Tip: weekendverhuur is automatisch verlengd!
-                  </p>
-                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('beschikbaarheid')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-cyan-300 bg-cyan-950/60 border border-cyan-800/60 rounded-lg hover:bg-cyan-900/60 transition-colors cursor-pointer"
+                >
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>Open Kalender</span>
+                </button>
               </div>
 
+              {/* Quick Period Presets */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <button
                   type="button"
@@ -371,6 +385,97 @@ export const CalculatorSection: React.FC = () => {
                 >
                   <div className="font-bold text-sm text-white mb-1">2 Dagen</div>
                   <div className="text-xs text-slate-400">Twee aaneengesloten doordeweekse dagen</div>
+                </button>
+              </div>
+
+              {/* Date pickers inline */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+                    Bezorg-/Afhaaldag
+                  </label>
+                  <input
+                    type="date"
+                    value={cart.startDate}
+                    onChange={(e) => {
+                      const newStart = e.target.value;
+                      const eventDay = new Date(cart.eventDate);
+                      setDates(newStart, cart.eventDate, cart.returnDate, cart.isWeekend);
+                    }}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-400 mb-1 text-cyan-300">
+                    Feestdatum *
+                  </label>
+                  <input
+                    type="date"
+                    value={cart.eventDate}
+                    onChange={(e) => {
+                      const newEvent = e.target.value;
+                      const d = new Date(newEvent);
+                      const isWeekend = d.getDay() === 6 || d.getDay() === 5;
+                      setDates(cart.startDate, newEvent, cart.returnDate, isWeekend);
+                    }}
+                    className="w-full bg-slate-900 border border-cyan-500/70 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+                    Retourdag (PostNL)
+                  </label>
+                  <input
+                    type="date"
+                    value={cart.returnDate}
+                    onChange={(e) => {
+                      const newRet = e.target.value;
+                      setDates(cart.startDate, cart.eventDate, newRet, cart.isWeekend);
+                    }}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-400"
+                  />
+                </div>
+              </div>
+
+              {/* Realtime Live Availability Pill */}
+              <div
+                className={`p-3 rounded-xl border text-xs flex items-center justify-between gap-3 ${
+                  availabilityCheck.isAvailable
+                    ? 'bg-emerald-950/30 border-emerald-500/40 text-emerald-300'
+                    : 'bg-rose-950/30 border-rose-500/40 text-rose-300'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Check className="w-4 h-4 shrink-0" />
+                  <span>
+                    {availabilityCheck.isAvailable ? (
+                      <>
+                        <strong>Live Beschikbaar:</strong> Nog{' '}
+                        <span className="font-mono font-bold text-white">
+                          {availabilityCheck.minAvailable}
+                        </span>{' '}
+                        koptelefoons vrij voor deze datum!
+                      </>
+                    ) : (
+                      <>
+                        <strong>Beperkte voorraad:</strong> Er zijn er nog maximaal{' '}
+                        <span className="font-mono font-bold text-white">
+                          {availabilityCheck.minAvailable}
+                        </span>{' '}
+                        beschikbaar.
+                      </>
+                    )}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('beschikbaarheid')}
+                  className="text-[11px] underline font-semibold text-slate-200 hover:text-white cursor-pointer whitespace-nowrap"
+                >
+                  Kalender details
                 </button>
               </div>
             </div>

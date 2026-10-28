@@ -1,12 +1,13 @@
 import React from 'react';
 import { useRental, ActiveTab } from '../context/RentalContext';
-import { Headphones, Sliders, Sparkles, HelpCircle, Settings, ShoppingBag } from 'lucide-react';
+import { Headphones, Sliders, Sparkles, HelpCircle, Settings, ShoppingBag, Calendar } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
-  const { activeTab, setActiveTab, openBookingModal, pricing, cart } = useRental();
+  const { activeTab, setActiveTab, openBookingModal, pricing } = useRental();
 
   const navLinks: { id: ActiveTab; label: string; icon: React.ReactNode }[] = [
     { id: 'home', label: 'Sets & Calculator', icon: <Sliders className="w-4 h-4" /> },
+    { id: 'beschikbaarheid', label: 'Beschikbaarheid', icon: <Calendar className="w-4 h-4 text-cyan-400" /> },
     { id: 'aanbiedingen', label: 'Aanbiedingen', icon: <Sparkles className="w-4 h-4 text-amber-400" /> },
     { id: 'hoe-werkt-het', label: 'Hoe het werkt', icon: <HelpCircle className="w-4 h-4" /> },
     { id: 'beheer', label: 'Prijzen & Beheer', icon: <Settings className="w-4 h-4 text-emerald-400" /> },
@@ -19,7 +20,7 @@ export const Navbar: React.FC = () => {
           {/* Zone 1: Single text element wordmark with logo mark */}
           <button
             onClick={() => setActiveTab('home')}
-            className="flex items-center gap-3 text-left focus:outline-none group shrink-0"
+            className="flex items-center gap-3 text-left focus:outline-none group shrink-0 cursor-pointer"
           >
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 via-indigo-500 to-pink-500 p-0.5 shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform duration-200">
               <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
@@ -36,7 +37,7 @@ export const Navbar: React.FC = () => {
             </div>
           </button>
 
-          {/* Zone 2: Clean single-line text navigation links */}
+          {/* Zone 2: 5 clean single-line text navigation links */}
           <nav className="hidden md:flex items-center gap-1 lg:gap-2">
             {navLinks.map((link) => {
               const isActive = activeTab === link.id;
@@ -44,7 +45,7 @@ export const Navbar: React.FC = () => {
                 <button
                   key={link.id}
                   onClick={() => setActiveTab(link.id)}
-                  className={`flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-lg whitespace-nowrap shrink-0 transition-colors ${
+                  className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
                     isActive
                       ? 'bg-slate-800/90 text-white shadow-inner border border-slate-700/60'
                       : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
@@ -64,7 +65,7 @@ export const Navbar: React.FC = () => {
               className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-slate-950 bg-gradient-to-r from-cyan-400 to-emerald-400 rounded-xl hover:from-cyan-300 hover:to-emerald-300 transition-all shadow-md shadow-cyan-500/10 active:scale-95 whitespace-nowrap shrink-0 cursor-pointer"
             >
               <ShoppingBag className="w-4 h-4 text-slate-950" />
-              <span>Reserveer Set</span>
+              <span>Direct Reserveren</span>
               <span className="hidden sm:inline-block px-1.5 py-0.5 text-xs bg-slate-950/20 rounded font-mono font-bold">
                 €{pricing.totalIncVat.toFixed(2)}
               </span>
