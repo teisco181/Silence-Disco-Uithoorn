@@ -1,0 +1,6 @@
+{
+  "name": "SilentGroove - Silent Disco Verhuur",
+  "description": "Professionele silent disco sets huren met flexibel aantal koptelefoons, realtime prijsberekening, aanbiedingen en beheerder instellingen.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
