@@ -94,13 +94,23 @@ interface RentalContextType {
   toastMessage: string | null;
   showToast: (msg: string) => void;
 
+  // Password protection for Settings / Beheer
+  isAdminUnlocked: boolean;
+  unlockAdmin: (password: string) => boolean;
+  lockAdmin: () => void;
+  updateAdminPassword: (newPassword: string) => void;
+
   // Authentication & Accounts
   currentUser: User | null;
   userProfile: UserProfile | null;
   isAdmin: boolean;
   isAuthModalOpen: boolean;
   setIsAuthModalOpen: (open: boolean) => void;
+  authError: string | null;
+  setAuthError: (err: string | null) => void;
   handleGoogleLogin: () => Promise<void>;
+  loginAsCustomer: (name: string, email: string) => void;
+  loginAsAdmin: (email: string, password: string) => { success: boolean; error?: string };
   handleDemoLogin: (role: 'customer' | 'admin', name?: string, email?: string) => void;
   handleLogout: () => Promise<void>;
 
@@ -123,6 +133,7 @@ const OFFERS_KEY = 'silentgroove_offers_v2';
 const BOOKINGS_KEY = 'silentgroove_bookings_v2';
 const PRODUCTS_KEY = 'silentgroove_custom_products_v2';
 const DEMO_USER_KEY = 'silentgroove_demo_user_v2';
+const ADMIN_UNLOCKED_KEY = 'silentgroove_admin_unlocked_v2';
 
 const getInitialDates = () => {
   const today = new Date();
@@ -224,6 +235,16 @@ export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return null;
   });
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  // Settings / Admin panel password unlock state
+  const [isAdminUnlocked, setIsAdminUnlocked] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem(ADMIN_UNLOCKED_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
 
   // Chat state
   const [isChatDrawerOpen, setIsChatDrawerOpen] = useState(false);
@@ -641,34 +662,146 @@ export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const openBookingModal = () => setIsBookingModalOpen(true);
   const closeBookingModal = () => setIsBookingModalOpen(false);
 
+  // Password security methods for settings/beheer menu
+  const unlockAdmin = (password: string): boolean => {
+    const activePassword = settings.adminPassword || 'Welkom2012*';
+    if (password.trim() === activePassword.trim()) {
+      setIsAdminUnlocked(true);
+      try {
+        sessionStorage.setItem(ADMIN_UNLOCKED_KEY, 'true');
+      } catch {
+        // ignore
+      }
+      showToast('Beheerderspaneel succesvol ontgrendeld!');
+      return true;
+    } else {
+      showToast('Onjuist wachtwoord. Probeer opnieuw.');
+      return false;
+    }
+  };
+
+  const lockAdmin = () => {
+    setIsAdminUnlocked(false);
+    try {
+      sessionStorage.removeItem(ADMIN_UNLOCKED_KEY);
+    } catch {
+      // ignore
+    }
+    showToast('Beheerderspaneel vergrendeld');
+  };
+
+  const updateAdminPassword = (newPassword: string) => {
+    const updated: RentalSettings = {
+      ...settings,
+      adminPassword: newPassword.trim(),
+    };
+    updateSettings(updated);
+    showToast('Beheerderswachtwoord succesvol opgeslagen!');
+  };
+
   // Authentication actions
   const handleGoogleLogin = async () => {
+    setAuthError(null);
     try {
       await loginWithGoogle();
       setIsAuthModalOpen(false);
       showToast('Succesvol ingelogd met Google!');
-    } catch {
-      showToast('Inloggen geannuleerd of mislukt');
+    } catch (err: any) {
+      console.warn('Google login error detail:', err);
+      let errMsg = 'Inloggen met Google mislukt.';
+      if (err?.code === 'auth/unauthorized-domain') {
+        errMsg = 'Dit domein is nog niet toegevoegd aan Authorized Domains in de Firebase Console. Voeg het domein toe onder Firebase Console > Authentication > Settings > Authorized domains, of log hieronder direct in.';
+      } else if (err?.code === 'auth/popup-blocked') {
+        errMsg = 'De Google inlog-popup werd geblokkeerd door je browser of iframe. Sta popups toe of gebruik de directe inlogvelden hieronder.';
+      } else if (err?.code === 'auth/popup-closed-by-user') {
+        errMsg = 'Het Google inlogvenster werd gesloten voordat de login was voltooid.';
+      } else if (err?.code === 'auth/operation-not-allowed') {
+        errMsg = 'Google inlogprovider staat nog niet ingeschakeld in het Firebase project.';
+      } else if (err?.message) {
+        errMsg = `Google inloggen mislukt: ${err.message}.`;
+      }
+      setAuthError(errMsg);
+      showToast('Google inloggen mislukt. Zie toelichting in het inlogvenster.');
     }
   };
 
-  const handleDemoLogin = (role: 'customer' | 'admin', name?: string, email?: string) => {
-    const demoProfile: UserProfile = {
-      uid: role === 'admin' ? 'admin_demo_uithoorn' : 'customer_' + Math.random().toString(36).substring(2, 7),
-      email: email || (role === 'admin' ? 'teisco181@gmail.com' : 'klant.uithoorn@gmail.com'),
-      displayName: name || (role === 'admin' ? 'Beheerder Uithoorn' : 'Klant Uithoorn'),
-      role,
+  // Dedicated Admin Login: requires email Teisco181@gmail.com AND extra password Welkom2012*
+  const loginAsAdmin = (email: string, password: string): { success: boolean; error?: string } => {
+    const cleanEmail = email.trim().toLowerCase();
+    if (cleanEmail !== 'teisco181@gmail.com') {
+      return {
+        success: false,
+        error: 'Toegang geweigerd: Alleen het account Teisco181@gmail.com heeft toegang tot het beheerdersaccount.',
+      };
+    }
+    const currentPass = settings.adminPassword || 'Welkom2012*';
+    if (password.trim() !== currentPass.trim()) {
+      return {
+        success: false,
+        error: 'Onjuist extra beheerderswachtwoord. Controleer het wachtwoord en probeer opnieuw.',
+      };
+    }
+
+    const adminProfile: UserProfile = {
+      uid: 'admin_teisco_uithoorn',
+      email: 'teisco181@gmail.com',
+      displayName: 'Teisco (Beheerder)',
+      role: 'admin',
       city: 'Uithoorn',
       createdAt: new Date().toISOString(),
     };
-    setDemoUser(demoProfile);
+
+    setDemoUser(adminProfile);
+    setIsAdminUnlocked(true);
     try {
-      localStorage.setItem(DEMO_USER_KEY, JSON.stringify(demoProfile));
+      localStorage.setItem(DEMO_USER_KEY, JSON.stringify(adminProfile));
+      sessionStorage.setItem(ADMIN_UNLOCKED_KEY, 'true');
+    } catch {
+      // ignore
+    }
+
+    setIsAuthModalOpen(false);
+    setAuthError(null);
+    showToast('Succesvol ingelogd en ontgrendeld als Beheerder (Teisco)!');
+    return { success: true };
+  };
+
+  // Dedicated Customer Login: no extra password required
+  const loginAsCustomer = (name: string, email: string) => {
+    const cleanEmail = email.trim().toLowerCase();
+    if (cleanEmail === 'teisco181@gmail.com') {
+      showToast('Gebruik voor Teisco181@gmail.com het beheerdersinlogveld met het extra wachtwoord.');
+      return;
+    }
+
+    const customerProfile: UserProfile = {
+      uid: 'customer_' + Math.random().toString(36).substring(2, 9),
+      email: cleanEmail || 'klant.uithoorn@gmail.com',
+      displayName: name.trim() || 'Klant Uithoorn',
+      role: 'customer',
+      city: 'Uithoorn',
+      createdAt: new Date().toISOString(),
+    };
+
+    setDemoUser(customerProfile);
+    try {
+      localStorage.setItem(DEMO_USER_KEY, JSON.stringify(customerProfile));
     } catch {
       // ignore
     }
     setIsAuthModalOpen(false);
-    showToast(role === 'admin' ? 'Ingelogd als Beheerder (Uithoorn)' : 'Ingelogd als Klant!');
+    setAuthError(null);
+    showToast(`Ingelogd als klant: ${customerProfile.displayName}`);
+  };
+
+  const handleDemoLogin = (role: 'customer' | 'admin', name?: string, email?: string) => {
+    if (role === 'admin') {
+      // Cannot log in as admin without password!
+      showToast('Voor het beheerdersaccount moet het wachtwoord ingevuld worden.');
+      setIsAuthModalOpen(true);
+      return;
+    }
+    loginAsCustomer(name || 'Klant Uithoorn', email || 'klant.uithoorn@gmail.com');
   };
 
   const handleLogout = async () => {
@@ -784,12 +917,20 @@ export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setLatestConfirmedBooking,
         toastMessage,
         showToast,
+        isAdminUnlocked,
+        unlockAdmin,
+        lockAdmin,
+        updateAdminPassword,
         currentUser,
         userProfile,
         isAdmin,
         isAuthModalOpen,
         setIsAuthModalOpen,
+        authError,
+        setAuthError,
         handleGoogleLogin,
+        loginAsCustomer,
+        loginAsAdmin,
         handleDemoLogin,
         handleLogout,
         isChatDrawerOpen,

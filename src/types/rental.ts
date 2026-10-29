@@ -34,6 +34,7 @@ export interface RentalSettings {
   pickupLocationAddress: string;
   pickupCity: string;
   serviceArea: string; // "Uithoorn en omstreken"
+  adminPassword?: string; // Beveiligingswachtwoord voor instellingenmenu
 }
 
 export interface DealOffer {

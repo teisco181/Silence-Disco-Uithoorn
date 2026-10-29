@@ -1,6 +1,6 @@
 import React from 'react';
 import { useRental, ActiveTab } from '../context/RentalContext';
-import { Sliders, Sparkles, HelpCircle, Settings, ShoppingBag, Calendar, User, MessageSquare, MapPin } from 'lucide-react';
+import { Sliders, Sparkles, HelpCircle, Settings, ShoppingBag, Calendar, User, MessageSquare, MapPin, Lock, Unlock } from 'lucide-react';
 import brandLogo from '../assets/images/logo_silence_disco_uithoorn_1793259331317.jpg';
 
 export const Navbar: React.FC = () => {
@@ -13,6 +13,7 @@ export const Navbar: React.FC = () => {
     setIsAuthModalOpen,
     setIsChatDrawerOpen,
     unreadChatCount,
+    isAdminUnlocked,
   } = useRental();
 
   const navLinks: { id: ActiveTab; label: string; icon: React.ReactNode }[] = [
@@ -20,7 +21,15 @@ export const Navbar: React.FC = () => {
     { id: 'beschikbaarheid', label: 'Beschikbaarheid', icon: <Calendar className="w-4 h-4 text-cyan-400" /> },
     { id: 'aanbiedingen', label: 'Aanbiedingen', icon: <Sparkles className="w-4 h-4 text-amber-400" /> },
     { id: 'hoe-werkt-het', label: 'Hoe het werkt', icon: <HelpCircle className="w-4 h-4" /> },
-    { id: 'beheer', label: 'Prijzen & Beheer', icon: <Settings className="w-4 h-4 text-emerald-400" /> },
+    {
+      id: 'beheer',
+      label: 'Prijzen & Beheer',
+      icon: isAdminUnlocked ? (
+        <Unlock className="w-4 h-4 text-emerald-400" />
+      ) : (
+        <Lock className="w-4 h-4 text-pink-400" />
+      ),
+    },
   ];
 
   return (

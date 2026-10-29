@@ -24,6 +24,7 @@ export const DEFAULT_RENTAL_SETTINGS: RentalSettings = {
   pickupLocationAddress: 'Wiegerbruinlaan 12, 1422 CB Uithoorn',
   pickupCity: 'Uithoorn',
   serviceArea: 'Uithoorn, De Kwakel, Aalsmeer, Amstelveen, Mijdrecht & omstreken',
+  adminPassword: 'Welkom2012*',
 };
 
 // Start leeg: de beheerder kan zelf producten toevoegen via het nieuwe Producten Menu in het Beheerpaneel
