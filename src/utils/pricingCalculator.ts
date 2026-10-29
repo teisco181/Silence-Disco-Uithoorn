@@ -35,14 +35,13 @@ export function calculatePricing(
   // 2 days = 1.6x
   // 3+ days: if weekend deal, 1x or settings.weekendSurchargeMultiplier
   let durationMultiplier = 1;
-  if (cart.rentalDays === 2) {
-    durationMultiplier = 1.6;
-  } else if (cart.rentalDays >= 3) {
-    if (cart.isWeekend) {
-      durationMultiplier = settings.weekendSurchargeMultiplier;
-    } else {
-      durationMultiplier = 1 + (cart.rentalDays - 1) * 0.5;
-    }
+  if (cart.rentalDays === 1) {
+    durationMultiplier = 1;
+  } else if (cart.isWeekend) {
+    durationMultiplier = settings.weekendSurchargeMultiplier;
+  } else {
+    const extraFactor = settings.multidayExtraDayFactor ?? 0.5;
+    durationMultiplier = 1 + (cart.rentalDays - 1) * extraFactor;
   }
 
   let rentalSubtotal =

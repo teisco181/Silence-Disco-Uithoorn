@@ -25,6 +25,7 @@ import {
   RotateCcw,
   Check,
 } from 'lucide-react';
+import brandLogo from '../assets/images/logo_silence_disco_uithoorn_1793259331317.jpg';
 
 export const BookingModal: React.FC = () => {
   const {
@@ -223,11 +224,16 @@ Totaalbedrag: €${latestConfirmedBooking.pricingSummary.totalIncVat.toFixed(2)}
             {/* Official Order Slip */}
             <div className="bg-slate-950 rounded-2xl border border-slate-800 p-5 sm:p-6 text-xs space-y-4">
               
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-800 gap-2">
-                <div>
-                  <div className="text-[11px] text-slate-500">Boekingsnummer</div>
-                  <div className="text-base font-extrabold font-mono text-cyan-400">
-                    #{latestConfirmedBooking.id}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-800 gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-full p-0.5 bg-gradient-to-tr from-cyan-400 via-purple-500 to-pink-500 shrink-0 shadow-md">
+                    <img src={brandLogo} alt="Silence Disco Verhuur Uithoorn" className="w-full h-full object-cover rounded-full bg-black" />
+                  </div>
+                  <div>
+                    <div className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">Silence Disco Verhuur Uithoorn</div>
+                    <div className="text-base font-extrabold font-mono text-cyan-400">
+                      #{latestConfirmedBooking.id}
+                    </div>
                   </div>
                 </div>
 

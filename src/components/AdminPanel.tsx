@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useRental } from '../context/RentalContext';
 import { RentalSettings, DealOffer, TierPricing, BookingRecord, OrderStatus, PaymentStatus } from '../types/rental';
-import { formatDutchDate, getAvailabilityForDate } from '../utils/availability';
+import { formatDutchDate } from '../utils/availability';
 import {
   Settings,
   Save,
@@ -25,6 +25,11 @@ import {
   Mail,
   Clock,
   Filter,
+  Edit2,
+  X,
+  MapPin,
+  Building,
+  ShieldAlert,
 } from 'lucide-react';
 
 export const AdminPanel: React.FC = () => {
@@ -46,7 +51,7 @@ export const AdminPanel: React.FC = () => {
   } = useRental();
 
   // Admin subtabs
-  const [adminSubTab, setAdminSubTab] = useState<'tarieven' | 'boekingen' | 'aanbiedingen'>('tarieven');
+  const [adminSubTab, setAdminSubTab] = useState<'tarieven' | 'pakketten' | 'boekingen'>('tarieven');
 
   // Local state for editable settings
   const [formSettings, setFormSettings] = useState<RentalSettings>({
@@ -54,27 +59,12 @@ export const AdminPanel: React.FC = () => {
     tierPricing: settings.tierPricing.map((t) => ({ ...t })),
   });
 
-  // State for creating a new offer modal/inline form
-  const [isAddingOffer, setIsAddingOffer] = useState(false);
-  const [newOffer, setNewOffer] = useState<Partial<DealOffer>>({
-    title: '',
-    badge: 'Tijdelijke Deal',
-    tagline: '',
-    headphonesCount: 30,
-    transmittersCount: 2,
-    discoLightsCount: 1,
-    powerbanksCount: 0,
-    includeDJCables: true,
-    rentalDurationDays: 1,
-    isWeekendDeal: false,
-    fixedPrice: 89,
-    originalPrice: 120,
-    description: '',
-    features: ['Inclusief aansluitkabels', 'Gratis PostNL retourlabel'],
-    active: true,
-  });
+  // State for editing an existing offer or creating a new one
+  const [editingOfferId, setEditingOfferId] = useState<string | null>(null);
+  const [offerFormData, setOfferFormData] = useState<DealOffer | null>(null);
+  const [newFeatureText, setNewFeatureText] = useState('');
 
-  // State for adding a manual booking
+  // State for manual booking
   const [isAddingManualBooking, setIsAddingManualBooking] = useState(false);
   const [manualBookingData, setManualBookingData] = useState({
     customerName: '',
@@ -128,33 +118,73 @@ export const AdminPanel: React.FC = () => {
     setFormSettings({ ...formSettings, tierPricing: updatedTiers });
   };
 
-  const handleCreateOffer = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newOffer.title || !newOffer.fixedPrice) return;
+  // Offer editing functions
+  const handleOpenEditOffer = (offer: DealOffer) => {
+    setEditingOfferId(offer.id);
+    setOfferFormData({ ...offer, features: [...offer.features] });
+    setNewFeatureText('');
+  };
 
-    const offerToSave: DealOffer = {
-      id: `offer-${Date.now()}`,
-      title: newOffer.title || 'Nieuw Pakket',
-      badge: newOffer.badge || 'Actie',
-      tagline: newOffer.tagline || 'Voordelige samengestelde set',
-      headphonesCount: Number(newOffer.headphonesCount) || 20,
-      transmittersCount: Number(newOffer.transmittersCount) || 2,
-      discoLightsCount: Number(newOffer.discoLightsCount) || 0,
-      powerbanksCount: Number(newOffer.powerbanksCount) || 0,
+  const handleOpenCreateOffer = () => {
+    const newId = `offer-${Date.now()}`;
+    const newObj: DealOffer = {
+      id: newId,
+      title: 'Nieuw Voordeelpakket',
+      badge: 'Nieuwe Deal',
+      tagline: 'Complete silent disco set met voordeel',
+      headphonesCount: 30,
+      transmittersCount: 2,
+      discoLightsCount: 1,
+      powerbanksCount: 0,
       includeDJCables: true,
-      rentalDurationDays: Number(newOffer.rentalDurationDays) || 1,
-      isWeekendDeal: !!newOffer.isWeekendDeal,
-      fixedPrice: Number(newOffer.fixedPrice) || 75,
-      originalPrice: Number(newOffer.originalPrice) || 100,
-      description: newOffer.description || 'Complete silent disco set met korting.',
-      features: (newOffer.features && newOffer.features.length > 0)
-        ? newOffer.features
-        : ['Gratis kabels', 'Plug & Play'],
+      rentalDurationDays: 1,
+      isWeekendDeal: false,
+      fixedPrice: 89,
+      originalPrice: 125,
+      description: 'Luxe samengestelde set inclusief benodigde kabels en snelle service.',
+      features: [
+        '30 Silent disco RGB koptelefoons',
+        '2 Krachtige zenders',
+        '1 RGB Party discolamp',
+        'Gratis retour via PostNL',
+      ],
       active: true,
+      popular: false,
     };
+    setEditingOfferId(newId);
+    setOfferFormData(newObj);
+    setNewFeatureText('');
+  };
 
-    addOffer(offerToSave);
-    setIsAddingOffer(false);
+  const handleSaveOffer = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!offerFormData) return;
+
+    const exists = offers.some((o) => o.id === offerFormData.id);
+    if (exists) {
+      updateOffer(offerFormData.id, offerFormData);
+    } else {
+      addOffer(offerFormData);
+    }
+    setEditingOfferId(null);
+    setOfferFormData(null);
+  };
+
+  const handleAddFeatureToOffer = () => {
+    if (!newFeatureText.trim() || !offerFormData) return;
+    setOfferFormData({
+      ...offerFormData,
+      features: [...offerFormData.features, newFeatureText.trim()],
+    });
+    setNewFeatureText('');
+  };
+
+  const handleRemoveFeatureFromOffer = (index: number) => {
+    if (!offerFormData) return;
+    setOfferFormData({
+      ...offerFormData,
+      features: offerFormData.features.filter((_, i) => i !== index),
+    });
   };
 
   const handleCreateManualBooking = (e: React.FormEvent) => {
@@ -231,13 +261,13 @@ export const AdminPanel: React.FC = () => {
           <div>
             <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400 tracking-wider uppercase mb-1">
               <Settings className="w-4 h-4" />
-              <span>Eigenaars & Beheerders Dashboard</span>
+              <span>Volledig Beheer & Configuratie</span>
             </div>
             <h1 className="text-3xl sm:text-4xl font-extrabold text-white font-display">
-              SilentGroove Beheerpaneel
+              Silence Disco Beheerpaneel
             </h1>
             <p className="text-sm text-slate-400 mt-1">
-              Beheer prijzen, voorraad staffels, alle klantboekingen en lopende actiepakketten.
+              Beheer alle prijzen, volumestaffels, pakketten, minimale & maximale huurdagen en reserveringen.
             </p>
           </div>
 
@@ -247,19 +277,19 @@ export const AdminPanel: React.FC = () => {
               className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-slate-300 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-xl transition-colors cursor-pointer"
             >
               <Eye className="w-4 h-4" />
-              <span>Bekijk Klantweergave</span>
+              <span>Bekijk Website</span>
             </button>
             <button
               onClick={resetSettings}
               className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-rose-400 bg-rose-950/40 hover:bg-rose-900/40 border border-rose-800/60 rounded-xl transition-colors cursor-pointer"
             >
               <RotateCcw className="w-4 h-4" />
-              <span>Herstel Standaard</span>
+              <span>Herstel Fabrieksinstellingen</span>
             </button>
           </div>
         </div>
 
-        {/* Sub-navigation tabs inside Admin */}
+        {/* Sub-navigation tabs */}
         <div className="flex items-center gap-2 pb-6 border-b border-slate-800/80 mb-8 overflow-x-auto">
           <button
             onClick={() => setAdminSubTab('tarieven')}
@@ -270,7 +300,19 @@ export const AdminPanel: React.FC = () => {
             }`}
           >
             <DollarSign className="w-4 h-4" />
-            <span>Prijzen & Voorraad</span>
+            <span>Prijzen, Dagen & Limieten</span>
+          </button>
+
+          <button
+            onClick={() => setAdminSubTab('pakketten')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+              adminSubTab === 'pakketten'
+                ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/20'
+                : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'
+            }`}
+          >
+            <Package className="w-4 h-4" />
+            <span>Pakketten & Aanbiedingen ({offers.length})</span>
           </button>
 
           <button
@@ -284,41 +326,154 @@ export const AdminPanel: React.FC = () => {
             <Calendar className="w-4 h-4" />
             <span>Boekingen & Beschikbaarheid ({bookings.length})</span>
           </button>
-
-          <button
-            onClick={() => setAdminSubTab('aanbiedingen')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-              adminSubTab === 'aanbiedingen'
-                ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/20'
-                : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'
-            }`}
-          >
-            <Sparkles className="w-4 h-4" />
-            <span>Aanbiedingen Beheer ({offers.length})</span>
-          </button>
         </div>
 
         {/* ============================================================
-            SUB-TAB 1: PRIJZEN & VOORRAAD
+            SUB-TAB 1: PRIJZEN, DAGEN & LIMIETEN
            ============================================================ */}
         {adminSubTab === 'tarieven' && (
           <form onSubmit={handleSaveSettings} className="space-y-10">
             
-            {/* Voorraad & Basistarieven */}
+            {/* Card 1: Dagen & Huurbeperkingen */}
+            <div className="p-6 sm:p-8 bg-slate-900 rounded-3xl border border-slate-800 shadow-xl">
+              <div className="flex items-center gap-2.5 mb-6 pb-4 border-b border-slate-800">
+                <Clock className="w-5 h-5 text-indigo-400" />
+                <div>
+                  <h2 className="text-xl font-bold text-white font-display">
+                    Huurduur, Maximale Dagen & Toeslagfactoren
+                  </h2>
+                  <p className="text-xs text-slate-400">
+                    Stel hier in hoeveel dagen klanten maximaal kunnen huren en hoe meerdagentarieven berekend worden.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                
+                {/* Max Days */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-2">
+                    Maximaal Aantal Huurdagen
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="1"
+                      max="90"
+                      value={formSettings.maxDays}
+                      onChange={(e) =>
+                        setFormSettings({
+                          ...formSettings,
+                          maxDays: parseInt(e.target.value) || 14,
+                        })
+                      }
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white font-mono text-sm focus:outline-none focus:border-cyan-400"
+                    />
+                    <span className="absolute right-3.5 top-2.5 text-xs text-slate-500">dagen</span>
+                  </div>
+                  <span className="text-[11px] text-slate-500 mt-1 block">
+                    Bovengrens voor de huurcalculator
+                  </span>
+                </div>
+
+                {/* Min Days */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-2">
+                    Minimaal Aantal Huurdagen
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="1"
+                      max="14"
+                      value={formSettings.minDays}
+                      onChange={(e) =>
+                        setFormSettings({
+                          ...formSettings,
+                          minDays: parseInt(e.target.value) || 1,
+                        })
+                      }
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white font-mono text-sm focus:outline-none focus:border-cyan-400"
+                    />
+                    <span className="absolute right-3.5 top-2.5 text-xs text-slate-500">dagen</span>
+                  </div>
+                  <span className="text-[11px] text-slate-500 mt-1 block">
+                    Standaard 1 feestdag
+                  </span>
+                </div>
+
+                {/* Weekend Surcharge Multiplier */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-2">
+                    Weekend Factor (1.0 = 3 Dagen voor 1 Dag)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="0.05"
+                      min="0.5"
+                      max="3.0"
+                      value={formSettings.weekendSurchargeMultiplier}
+                      onChange={(e) =>
+                        setFormSettings({
+                          ...formSettings,
+                          weekendSurchargeMultiplier: parseFloat(e.target.value) || 1.0,
+                        })
+                      }
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white font-mono text-sm focus:outline-none focus:border-cyan-400"
+                    />
+                    <span className="absolute right-3.5 top-2.5 text-xs text-slate-500">× tarief</span>
+                  </div>
+                  <span className="text-[11px] text-slate-500 mt-1 block">
+                    1.0 = geen meerkosten voor weekend
+                  </span>
+                </div>
+
+                {/* Extra day factor */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-2">
+                    Toeslag per Extra Huurdag Factor
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="0.05"
+                      min="0.1"
+                      max="1.0"
+                      value={formSettings.multidayExtraDayFactor}
+                      onChange={(e) =>
+                        setFormSettings({
+                          ...formSettings,
+                          multidayExtraDayFactor: parseFloat(e.target.value) || 0.5,
+                        })
+                      }
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white font-mono text-sm focus:outline-none focus:border-cyan-400"
+                    />
+                    <span className="absolute right-3.5 top-2.5 text-xs text-slate-500">× dag</span>
+                  </div>
+                  <span className="text-[11px] text-slate-500 mt-1 block">
+                    0.50 = +50% per extra dag na dag 1
+                  </span>
+                </div>
+
+              </div>
+            </div>
+
+            {/* Card 2: Koptelefoons Voorraad & Prijzen */}
             <div className="p-6 sm:p-8 bg-slate-900 rounded-3xl border border-slate-800 shadow-xl">
               <div className="flex items-center gap-2.5 mb-6 pb-4 border-b border-slate-800">
                 <Headphones className="w-5 h-5 text-cyan-400" />
                 <h2 className="text-xl font-bold text-white font-display">
-                  Koptelefoons Voorraad & Basis Verhuurprijzen
+                  Voorraad & Alle Basisprijzen
                 </h2>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 
                 {/* Total Stock */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-2">
-                    Totale Voorraad Koptelefoons (stuks)
+                    Totale Magazijnvoorraad
                   </label>
                   <div className="relative">
                     <input
@@ -336,15 +491,35 @@ export const AdminPanel: React.FC = () => {
                     />
                     <span className="absolute right-3.5 top-2.5 text-xs text-slate-500">stuks</span>
                   </div>
-                  <span className="text-[11px] text-slate-500 mt-1 block">
-                    Capaciteit voor realtime beschikbaarheid
-                  </span>
                 </div>
 
-                {/* Minimum Headphones */}
+                {/* Max Headphones per order */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-2">
-                    Minimale Huurhoeveelheid
+                    Max. Koptelefoons per Bestelling
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="1"
+                      max="5000"
+                      value={formSettings.maxHeadphonesPerOrder}
+                      onChange={(e) =>
+                        setFormSettings({
+                          ...formSettings,
+                          maxHeadphonesPerOrder: parseInt(e.target.value) || 350,
+                        })
+                      }
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white font-mono text-sm focus:outline-none focus:border-cyan-400"
+                    />
+                    <span className="absolute right-3.5 top-2.5 text-xs text-slate-500">stuks</span>
+                  </div>
+                </div>
+
+                {/* Min Headphones */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-2">
+                    Min. Koptelefoons per Bestelling
                   </label>
                   <div className="relative">
                     <input
@@ -355,22 +530,19 @@ export const AdminPanel: React.FC = () => {
                       onChange={(e) =>
                         setFormSettings({
                           ...formSettings,
-                          minHeadphones: parseInt(e.target.value) || 1,
+                          minHeadphones: parseInt(e.target.value) || 5,
                         })
                       }
                       className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white font-mono text-sm focus:outline-none focus:border-cyan-400"
                     />
                     <span className="absolute right-3.5 top-2.5 text-xs text-slate-500">stuks</span>
                   </div>
-                  <span className="text-[11px] text-slate-500 mt-1 block">
-                    Ondergrens voor bestellingen
-                  </span>
                 </div>
 
-                {/* Base Price per Headphone */}
+                {/* Base price per headphone */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-2">
-                    Basisprijs per Koptelefoon (€ per dag)
+                    Basisprijs per Koptelefoon (€/dag)
                   </label>
                   <div className="relative">
                     <span className="absolute left-3.5 top-2.5 text-xs text-slate-400">€</span>
@@ -388,15 +560,12 @@ export const AdminPanel: React.FC = () => {
                       className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-8 pr-4 py-2.5 text-white font-mono text-sm focus:outline-none focus:border-cyan-400"
                     />
                   </div>
-                  <span className="text-[11px] text-slate-500 mt-1 block">
-                    Standaard tarief per stuk
-                  </span>
                 </div>
 
-                {/* Price per Transmitter */}
+                {/* Transmitter Price */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-2">
-                    Prijs per Zender (€ per stuk)
+                    Prijs per Zender (€)
                   </label>
                   <div className="relative">
                     <span className="absolute left-3.5 top-2.5 text-xs text-slate-400">€</span>
@@ -439,10 +608,33 @@ export const AdminPanel: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Shipping Fee */}
+                {/* Powerbank price */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-2">
-                    PostNL Heen & Terug Verzendkosten (€)
+                    Prijs per Outdoor Powerbank (€)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-2.5 text-xs text-slate-400">€</span>
+                    <input
+                      type="number"
+                      step="0.50"
+                      min="0"
+                      value={formSettings.pricePowerbank}
+                      onChange={(e) =>
+                        setFormSettings({
+                          ...formSettings,
+                          pricePowerbank: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-8 pr-4 py-2.5 text-white font-mono text-sm focus:outline-none focus:border-cyan-400"
+                    />
+                  </div>
+                </div>
+
+                {/* Shipping cost */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-2">
+                    PostNL Heen & Retour (€)
                   </label>
                   <div className="relative">
                     <span className="absolute left-3.5 top-2.5 text-xs text-slate-400">€</span>
@@ -485,10 +677,33 @@ export const AdminPanel: React.FC = () => {
                   </div>
                 </div>
 
+                {/* BTW percentage */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-2">
+                    BTW Tarief (%)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={formSettings.vatPercentage}
+                      onChange={(e) =>
+                        setFormSettings({
+                          ...formSettings,
+                          vatPercentage: parseInt(e.target.value) || 21,
+                        })
+                      }
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white font-mono text-sm focus:outline-none focus:border-cyan-400"
+                    />
+                    <span className="absolute right-3.5 top-2.5 text-xs text-slate-500">%</span>
+                  </div>
+                </div>
+
               </div>
             </div>
 
-            {/* Volume Staffelkortingen */}
+            {/* Card 3: Volumekorting Staffels */}
             <div className="p-6 sm:p-8 bg-slate-900 rounded-3xl border border-slate-800 shadow-xl">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-800">
                 <div className="flex items-center gap-2.5">
@@ -498,7 +713,7 @@ export const AdminPanel: React.FC = () => {
                       Volumekorting Staffels (Per Koptelefoon)
                     </h2>
                     <p className="text-xs text-slate-400">
-                      Stel in welke stuksprijs geldt bij grotere bestellingen.
+                      Stel staffels in waarbij de stuksprijs daalt naarmate de klant meer koptelefoons huurt.
                     </p>
                   </div>
                 </div>
@@ -596,6 +811,66 @@ export const AdminPanel: React.FC = () => {
               </div>
             </div>
 
+            {/* Card 4: Bedrijfs- & Afhaallocatie Info */}
+            <div className="p-6 sm:p-8 bg-slate-900 rounded-3xl border border-slate-800 shadow-xl">
+              <div className="flex items-center gap-2.5 mb-6 pb-4 border-b border-slate-800">
+                <Building className="w-5 h-5 text-amber-400" />
+                <h2 className="text-xl font-bold text-white font-display">
+                  Bedrijfsgegevens & Afhaallocatie
+                </h2>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-2">
+                    Bedrijfsnaam / Merk
+                  </label>
+                  <input
+                    type="text"
+                    value={formSettings.companyName}
+                    onChange={(e) => setFormSettings({ ...formSettings, companyName: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-xs focus:outline-none focus:border-cyan-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-2">
+                    E-mailadres Klantenservice
+                  </label>
+                  <input
+                    type="email"
+                    value={formSettings.companyEmail}
+                    onChange={(e) => setFormSettings({ ...formSettings, companyEmail: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-xs focus:outline-none focus:border-cyan-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-2">
+                    Telefoonnummer
+                  </label>
+                  <input
+                    type="text"
+                    value={formSettings.companyPhone}
+                    onChange={(e) => setFormSettings({ ...formSettings, companyPhone: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-xs focus:outline-none focus:border-cyan-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-2">
+                    Afhaallocatie Adres (Uithoorn)
+                  </label>
+                  <input
+                    type="text"
+                    value={formSettings.pickupLocationAddress}
+                    onChange={(e) => setFormSettings({ ...formSettings, pickupLocationAddress: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-xs focus:outline-none focus:border-cyan-400"
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Save Button for Settings */}
             <div className="flex justify-end gap-4 pt-2">
               <button
@@ -603,7 +878,7 @@ export const AdminPanel: React.FC = () => {
                 className="flex items-center gap-2 px-8 py-3.5 text-sm font-bold text-slate-950 bg-gradient-to-r from-emerald-400 to-cyan-400 hover:from-emerald-300 hover:to-cyan-300 rounded-xl shadow-lg shadow-emerald-500/20 active:scale-95 transition-all cursor-pointer"
               >
                 <Save className="w-4 h-4" />
-                <span>Prijzen & Voorraad Opslaan</span>
+                <span>Alle Prijzen & Instellingen Opslaan</span>
               </button>
             </div>
 
@@ -611,7 +886,401 @@ export const AdminPanel: React.FC = () => {
         )}
 
         {/* ============================================================
-            SUB-TAB 2: BOEKINGEN & BESCHIKBAARHEID
+            SUB-TAB 2: PAKKETTEN & AANBIEDINGEN (VOLLEDIGE EDITOR)
+           ============================================================ */}
+        {adminSubTab === 'pakketten' && (
+          <div className="space-y-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 bg-slate-900 rounded-3xl border border-slate-800">
+              <div>
+                <h2 className="text-xl font-bold text-white font-display">
+                  Pakketten & Aanbiedingen Beheren
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  Pas prijzen, koptelefoon-aantallen, huurdagen, teksten en inbegrepen opties van elk pakket aan.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleOpenCreateOffer}
+                  className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-colors cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Nieuw Pakket Aanmaken</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={resetOffers}
+                  className="px-3.5 py-2.5 text-xs font-semibold text-slate-400 hover:text-white bg-slate-800 rounded-xl transition-colors cursor-pointer"
+                >
+                  Reset Pakketten
+                </button>
+              </div>
+            </div>
+
+            {/* Modal / Inline Editor for creating or editing an offer */}
+            {offerFormData && (
+              <div className="p-6 sm:p-8 bg-slate-900 rounded-3xl border-2 border-amber-500/60 shadow-2xl space-y-6">
+                <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <Edit2 className="w-4 h-4 text-amber-400" />
+                    <h3 className="text-lg font-bold text-white font-display">
+                      Pakket Bewerken: {offerFormData.title}
+                    </h3>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setOfferFormData(null);
+                      setEditingOfferId(null);
+                    }}
+                    className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleSaveOffer} className="space-y-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+                    
+                    {/* Title */}
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">Titel van het Pakket *</label>
+                      <input
+                        type="text"
+                        required
+                        value={offerFormData.title}
+                        onChange={(e) => setOfferFormData({ ...offerFormData, title: e.target.value })}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                      />
+                    </div>
+
+                    {/* Badge */}
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">Badge Label</label>
+                      <input
+                        type="text"
+                        value={offerFormData.badge}
+                        onChange={(e) => setOfferFormData({ ...offerFormData, badge: e.target.value })}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                      />
+                    </div>
+
+                    {/* Tagline */}
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">Korte Slagzin (Tagline)</label>
+                      <input
+                        type="text"
+                        value={offerFormData.tagline}
+                        onChange={(e) => setOfferFormData({ ...offerFormData, tagline: e.target.value })}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                      />
+                    </div>
+
+                    {/* Headphones count */}
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">Aantal Koptelefoons</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={offerFormData.headphonesCount}
+                        onChange={(e) =>
+                          setOfferFormData({
+                            ...offerFormData,
+                            headphonesCount: parseInt(e.target.value) || 1,
+                          })
+                        }
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
+                      />
+                    </div>
+
+                    {/* Transmitters count */}
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">Aantal Zenders / Kanalen</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="3"
+                        value={offerFormData.transmittersCount}
+                        onChange={(e) =>
+                          setOfferFormData({
+                            ...offerFormData,
+                            transmittersCount: parseInt(e.target.value) || 1,
+                          })
+                        }
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
+                      />
+                    </div>
+
+                    {/* Disco Lights */}
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">Aantal Discolampen</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={offerFormData.discoLightsCount}
+                        onChange={(e) =>
+                          setOfferFormData({
+                            ...offerFormData,
+                            discoLightsCount: parseInt(e.target.value) || 0,
+                          })
+                        }
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
+                      />
+                    </div>
+
+                    {/* Fixed actieprijs */}
+                    <div>
+                      <label className="block text-amber-300 font-semibold mb-1">Vaste Actieprijs (€) *</label>
+                      <input
+                        type="number"
+                        step="0.50"
+                        value={offerFormData.fixedPrice}
+                        onChange={(e) =>
+                          setOfferFormData({
+                            ...offerFormData,
+                            fixedPrice: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                        className="w-full bg-slate-950 border border-amber-500 rounded-xl px-3 py-2 text-white font-mono font-bold text-sm"
+                      />
+                    </div>
+
+                    {/* Oorspronkelijke prijs */}
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">Oorspronkelijke Prijs (€)</label>
+                      <input
+                        type="number"
+                        step="0.50"
+                        value={offerFormData.originalPrice}
+                        onChange={(e) =>
+                          setOfferFormData({
+                            ...offerFormData,
+                            originalPrice: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
+                      />
+                    </div>
+
+                    {/* Rental duration days */}
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">Huurduur (Aantal Dagen)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={offerFormData.rentalDurationDays}
+                        onChange={(e) =>
+                          setOfferFormData({
+                            ...offerFormData,
+                            rentalDurationDays: parseInt(e.target.value) || 1,
+                          })
+                        }
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
+                      />
+                    </div>
+
+                  </div>
+
+                  {/* Toggles: Weekend deal & Popular */}
+                  <div className="flex flex-wrap gap-4 text-xs pt-1">
+                    <label className="flex items-center gap-2 cursor-pointer p-2.5 rounded-xl bg-slate-950 border border-slate-800">
+                      <input
+                        type="checkbox"
+                        checked={offerFormData.isWeekendDeal}
+                        onChange={(e) => setOfferFormData({ ...offerFormData, isWeekendDeal: e.target.checked })}
+                        className="w-4 h-4 rounded text-cyan-400"
+                      />
+                      <span className="text-white font-medium">Geldt als Weekenddeal (Vrijdag t/m Maandag)</span>
+                    </label>
+
+                    <label className="flex items-center gap-2 cursor-pointer p-2.5 rounded-xl bg-slate-950 border border-slate-800">
+                      <input
+                        type="checkbox"
+                        checked={offerFormData.popular}
+                        onChange={(e) => setOfferFormData({ ...offerFormData, popular: e.target.checked })}
+                        className="w-4 h-4 rounded text-amber-400"
+                      />
+                      <span className="text-white font-medium">Markeer als "Meest Populair"</span>
+                    </label>
+
+                    <label className="flex items-center gap-2 cursor-pointer p-2.5 rounded-xl bg-slate-950 border border-slate-800">
+                      <input
+                        type="checkbox"
+                        checked={offerFormData.active}
+                        onChange={(e) => setOfferFormData({ ...offerFormData, active: e.target.checked })}
+                        className="w-4 h-4 rounded text-emerald-400"
+                      />
+                      <span className="text-white font-medium">Pakket Zichtbaar (Actief)</span>
+                    </label>
+                  </div>
+
+                  {/* Description */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Pakket Omschrijving
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={offerFormData.description}
+                      onChange={(e) => setOfferFormData({ ...offerFormData, description: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"
+                    />
+                  </div>
+
+                  {/* Features / Bullets builder */}
+                  <div className="space-y-2">
+                    <label className="block text-xs font-semibold text-slate-300">
+                      Inbegrepen Pluspunten (Bullets)
+                    </label>
+                    <div className="space-y-1.5">
+                      {offerFormData.features.map((feat, idx) => (
+                        <div key={idx} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-slate-950 border border-slate-800 text-xs">
+                          <span className="text-slate-200">✓ {feat}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveFeatureFromOffer(idx)}
+                            className="text-slate-500 hover:text-rose-400 p-1"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex gap-2 pt-1">
+                      <input
+                        type="text"
+                        placeholder="Nieuw pluspunt toevoegen (bijv. Inclusief reservekoptelefoon)..."
+                        value={newFeatureText}
+                        onChange={(e) => setNewFeatureText(e.target.value)}
+                        className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddFeatureToOffer}
+                        className="px-4 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-white rounded-xl"
+                      >
+                        Toevoegen
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Submit buttons */}
+                  <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOfferFormData(null);
+                        setEditingOfferId(null);
+                      }}
+                      className="px-5 py-2.5 text-xs font-semibold text-slate-400 hover:text-white bg-slate-800 rounded-xl"
+                    >
+                      Annuleren
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-7 py-2.5 text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl shadow-md transition-all cursor-pointer"
+                    >
+                      Pakket Opslaan
+                    </button>
+                  </div>
+
+                </form>
+              </div>
+            )}
+
+            {/* List of current packages with direct edit buttons */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {offers.map((offer) => (
+                <div
+                  key={offer.id}
+                  className={`p-6 rounded-3xl border transition-all ${
+                    offer.active
+                      ? 'bg-slate-900 border-slate-800 shadow-xl'
+                      : 'bg-slate-900/40 border-slate-800/40 opacity-50'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div>
+                      <span className="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider block mb-1">
+                        {offer.badge} {offer.popular ? '· Populair' : ''}
+                      </span>
+                      <h3 className="text-lg font-bold text-white font-display">
+                        {offer.title}
+                      </h3>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditOffer(offer)}
+                        className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 transition-colors"
+                        title="Pakket bewerken"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteOffer(offer.id)}
+                        className="p-2 rounded-xl bg-slate-800 hover:bg-rose-950 text-slate-500 hover:text-rose-400 transition-colors"
+                        title="Pakket verwijderen"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-slate-400 leading-relaxed mb-4">
+                    {offer.description}
+                  </p>
+
+                  <div className="grid grid-cols-3 gap-2 p-3 rounded-2xl bg-slate-950 border border-slate-800 text-center text-xs mb-4">
+                    <div>
+                      <span className="text-[10px] text-slate-500 block">Koptelefoons</span>
+                      <span className="font-mono font-bold text-white">{offer.headphonesCount} stuks</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 block">Zenders</span>
+                      <span className="font-mono font-bold text-white">{offer.transmittersCount} kanalen</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 block">Huurduur</span>
+                      <span className="font-mono font-bold text-white">{offer.rentalDurationDays} dag(en)</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-800/80">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-2xl font-extrabold text-white font-mono tabular-nums">
+                        €{offer.fixedPrice.toFixed(2)}
+                      </span>
+                      <span className="text-xs text-slate-500 line-through font-mono">
+                        €{offer.originalPrice.toFixed(2)}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => updateOffer(offer.id, { active: !offer.active })}
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
+                        offer.active
+                          ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
+                          : 'bg-slate-800 text-slate-400'
+                      }`}
+                    >
+                      {offer.active ? 'Actief' : 'Gedeactiveerd'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+          </div>
+        )}
+
+        {/* ============================================================
+            SUB-TAB 3: BOEKINGEN & BESCHIKBAARHEID
            ============================================================ */}
         {adminSubTab === 'boekingen' && (
           <div className="space-y-8">
@@ -848,219 +1517,6 @@ export const AdminPanel: React.FC = () => {
                   </tbody>
                 </table>
               </div>
-            </div>
-
-          </div>
-        )}
-
-        {/* ============================================================
-            SUB-TAB 3: AANBIEDINGEN BEHEER
-           ============================================================ */}
-        {adminSubTab === 'aanbiedingen' && (
-          <div className="p-6 sm:p-8 bg-slate-900 rounded-3xl border border-slate-800 shadow-xl">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-800">
-              <div className="flex items-center gap-2.5">
-                <Sparkles className="w-5 h-5 text-amber-400" />
-                <div>
-                  <h2 className="text-xl font-bold text-white font-display">
-                    Aanbiedingen & Pakketten Beheer
-                  </h2>
-                  <p className="text-xs text-slate-400">
-                    Beheer de voordeelpakketten die zichtbaar zijn op de Aanbiedingen pagina.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsAddingOffer(true)}
-                  className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-colors cursor-pointer"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Nieuwe Aanbieding Aanmaken</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={resetOffers}
-                  className="px-3 py-2 text-xs font-semibold text-slate-400 hover:text-white bg-slate-800 rounded-xl transition-colors cursor-pointer"
-                >
-                  Reset Deals
-                </button>
-              </div>
-            </div>
-
-            {/* Form to add a new deal if active */}
-            {isAddingOffer && (
-              <div className="mb-8 p-6 bg-slate-950 rounded-2xl border border-amber-500/40 space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                  <h3 className="text-sm font-bold text-amber-300">Nieuw Voordeelpakket Samenstellen</h3>
-                  <button
-                    onClick={() => setIsAddingOffer(false)}
-                    className="text-xs text-slate-400 hover:text-slate-200 cursor-pointer"
-                  >
-                    Annuleren
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
-                  <div>
-                    <label className="block text-slate-300 mb-1">Titel aanbieding</label>
-                    <input
-                      type="text"
-                      placeholder="bijv. Bruiloft Silent Disco Deal"
-                      value={newOffer.title}
-                      onChange={(e) => setNewOffer({ ...newOffer, title: e.target.value })}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-300 mb-1">Badge label</label>
-                    <input
-                      type="text"
-                      placeholder="bijv. Bestseller / Weekend"
-                      value={newOffer.badge}
-                      onChange={(e) => setNewOffer({ ...newOffer, badge: e.target.value })}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-300 mb-1">Aantal koptelefoons</label>
-                    <input
-                      type="number"
-                      value={newOffer.headphonesCount}
-                      onChange={(e) =>
-                        setNewOffer({ ...newOffer, headphonesCount: parseInt(e.target.value) || 10 })
-                      }
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-300 mb-1">Actieprijs (€)</label>
-                    <input
-                      type="number"
-                      step="1.00"
-                      value={newOffer.fixedPrice}
-                      onChange={(e) =>
-                        setNewOffer({ ...newOffer, fixedPrice: parseFloat(e.target.value) || 0 })
-                      }
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono font-bold text-amber-400"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-300 mb-1">Oorspronkelijke waarde (€)</label>
-                    <input
-                      type="number"
-                      step="1.00"
-                      value={newOffer.originalPrice}
-                      onChange={(e) =>
-                        setNewOffer({ ...newOffer, originalPrice: parseFloat(e.target.value) || 0 })
-                      }
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-300 mb-1">Omschrijving</label>
-                    <input
-                      type="text"
-                      placeholder="Korte toelichting voor de klant"
-                      value={newOffer.description}
-                      onChange={(e) => setNewOffer({ ...newOffer, description: e.target.value })}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={handleCreateOffer}
-                    className="px-5 py-2 text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-lg transition-colors cursor-pointer"
-                  >
-                    Aanbieding Opslaan
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Current deals list */}
-            <div className="space-y-4">
-              {offers.map((offer) => (
-                <div
-                  key={offer.id}
-                  className={`p-4 rounded-2xl border transition-all ${
-                    offer.active
-                      ? 'bg-slate-950 border-slate-800'
-                      : 'bg-slate-950/40 border-slate-800/40 opacity-60'
-                  }`}
-                >
-                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-white text-base">{offer.title}</span>
-                        <span className="px-2 py-0.5 text-[10px] font-semibold bg-slate-800 text-slate-300 rounded">
-                          {offer.badge}
-                        </span>
-                        {!offer.active && (
-                          <span className="px-2 py-0.5 text-[10px] font-semibold bg-rose-950 text-rose-300 rounded">
-                            Gedeactiveerd
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-xs text-slate-400 flex items-center gap-3">
-                        <span>{offer.headphonesCount} koptelefoons</span>
-                        <span aria-hidden="true">·</span>
-                        <span>{offer.transmittersCount} zenders</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-4 flex-wrap">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-slate-400">Actieprijs:</span>
-                        <div className="relative w-28">
-                          <span className="absolute left-2.5 top-1.5 text-xs text-slate-400">€</span>
-                          <input
-                            type="number"
-                            value={offer.fixedPrice}
-                            onChange={(e) =>
-                              updateOffer(offer.id, {
-                                fixedPrice: parseFloat(e.target.value) || 0,
-                              })
-                            }
-                            className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-6 pr-2 py-1 text-xs text-white font-mono font-bold"
-                          />
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => updateOffer(offer.id, { active: !offer.active })}
-                        className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
-                          offer.active
-                            ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
-                            : 'bg-slate-800 text-slate-400'
-                        }`}
-                      >
-                        {offer.active ? 'Actief' : 'Inactief'}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => deleteOffer(offer.id)}
-                        className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg transition-colors cursor-pointer"
-                        title="Verwijder aanbieding"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
             </div>
 
           </div>

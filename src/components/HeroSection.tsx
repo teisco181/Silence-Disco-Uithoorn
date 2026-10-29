@@ -1,6 +1,8 @@
 import React from 'react';
 import { useRental } from '../context/RentalContext';
 import { Sparkles, ArrowRight, ShieldCheck, Truck, VolumeX, Music } from 'lucide-react';
+import heroPartyImg from '../assets/images/hero_silent_disco_party_1793196647405.jpg';
+import brandLogo from '../assets/images/logo_silence_disco_uithoorn_1793259331317.jpg';
 
 export const HeroSection: React.FC = () => {
   const { setActiveTab, openBookingModal } = useRental();
@@ -17,11 +19,20 @@ export const HeroSection: React.FC = () => {
           {/* Left Column: Hero Editorial & Intent */}
           <div className="lg:col-span-7 flex flex-col justify-center">
             
-            {/* Clean kicker text */}
-            <div className="flex items-center gap-2 text-xs font-semibold text-cyan-400 tracking-wider uppercase mb-3">
-              <span>Silent Disco Verhuur Nederland & België</span>
-              <span aria-hidden="true">·</span>
-              <span>100% Plug & Play</span>
+            {/* Logo Badge & Clean kicker text */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full p-0.5 bg-gradient-to-tr from-cyan-400 via-purple-500 to-pink-500 shadow-md shadow-cyan-500/20 shrink-0">
+                <img
+                  src={brandLogo}
+                  alt="Silence Disco Verhuur Uithoorn"
+                  className="w-full h-full object-cover rounded-full bg-black"
+                />
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold text-cyan-300 tracking-wider uppercase">
+                <span>Silence Disco Verhuur Uithoorn</span>
+                <span aria-hidden="true" className="text-slate-600">·</span>
+                <span className="text-slate-400">Gratis Ophalen of PostNL Bezorging</span>
+              </div>
             </div>
 
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight font-display text-white leading-[1.1] mb-6" style={{ textWrap: 'balance' }}>
@@ -82,7 +93,7 @@ export const HeroSection: React.FC = () => {
           <div className="lg:col-span-5 flex items-stretch">
             <div className="relative w-full rounded-2xl overflow-hidden border border-slate-800 bg-slate-900 shadow-2xl flex flex-col justify-end min-h-[380px] lg:min-h-[460px] group">
               <img
-                src="/src/assets/images/hero_silent_disco_party_1793196647405.jpg"
+                src={heroPartyImg}
                 alt="Mensen feesten met verlichte silent disco koptelefoons"
                 referrerPolicy="no-referrer"
                 className="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"

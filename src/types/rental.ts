@@ -8,6 +8,9 @@ export interface TierPricing {
 export interface RentalSettings {
   totalStockHeadphones: number;
   minHeadphones: number;
+  maxHeadphonesPerOrder: number;
+  minDays: number;
+  maxDays: number;
   basePricePerHeadphone: number;
   tierPricing: TierPricing[];
   pricePerTransmitter: number;
@@ -16,7 +19,13 @@ export interface RentalSettings {
   shippingCostRoundtrip: number;
   defaultDeposit: number;
   weekendSurchargeMultiplier: number;
+  multidayExtraDayFactor: number;
   vatPercentage: number;
+  companyName: string;
+  companyEmail: string;
+  companyPhone: string;
+  pickupLocationAddress: string;
+  pickupCity: string;
 }
 
 export interface DealOffer {

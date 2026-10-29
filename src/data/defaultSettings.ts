@@ -3,6 +3,9 @@ import { RentalSettings, DealOffer, BookingRecord } from '../types/rental';
 export const DEFAULT_RENTAL_SETTINGS: RentalSettings = {
   totalStockHeadphones: 350,
   minHeadphones: 10,
+  maxHeadphonesPerOrder: 350,
+  minDays: 1,
+  maxDays: 14,
   basePricePerHeadphone: 3.50,
   tierPricing: [
     { minCount: 1, maxCount: 24, pricePerHeadphone: 3.50, label: '1 - 24 stuks' },
@@ -16,7 +19,13 @@ export const DEFAULT_RENTAL_SETTINGS: RentalSettings = {
   shippingCostRoundtrip: 14.95,
   defaultDeposit: 50.00,
   weekendSurchargeMultiplier: 1.0, // Weekend gratis verlengd als actie!
+  multidayExtraDayFactor: 0.50, // 50% van dagprijs per extra dag na dag 1
   vatPercentage: 21,
+  companyName: 'Silence Disco Verhuur Uithoorn',
+  companyEmail: 'info@silencediscouithoorn.nl',
+  companyPhone: '0297 - 56 48 20',
+  pickupLocationAddress: 'Wiegerbruinlaan 12, 1422 CB Uithoorn',
+  pickupCity: 'Uithoorn',
 };
 
 export const DEFAULT_OFFERS: DealOffer[] = [

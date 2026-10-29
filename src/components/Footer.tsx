@@ -1,6 +1,7 @@
 import React from 'react';
 import { useRental } from '../context/RentalContext';
-import { Headphones, Mail, Phone, MapPin, Truck, ShieldCheck, Heart } from 'lucide-react';
+import { Mail, Phone, MapPin, Truck, ShieldCheck } from 'lucide-react';
+import brandLogo from '../assets/images/logo_silence_disco_uithoorn_1793259331317.jpg';
 
 export const Footer: React.FC = () => {
   const { setActiveTab } = useRental();
@@ -12,18 +13,25 @@ export const Footer: React.FC = () => {
           
           {/* Brand info */}
           <div className="md:col-span-1 space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-pink-500 p-0.5">
-                <div className="w-full h-full bg-slate-950 rounded-[6px] flex items-center justify-center">
-                  <Headphones className="w-4 h-4 text-cyan-400" />
-                </div>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full p-0.5 bg-gradient-to-tr from-cyan-400 via-purple-500 to-pink-500 shrink-0">
+                <img
+                  src={brandLogo}
+                  alt="Silence Disco Verhuur Uithoorn"
+                  className="w-full h-full object-cover rounded-full bg-black"
+                />
               </div>
-              <span className="text-base font-bold text-white font-display">
-                Silent<span className="text-cyan-400">Groove</span>
-              </span>
+              <div className="flex flex-col">
+                <span className="text-base font-bold text-white font-display">
+                  Silence Disco
+                </span>
+                <span className="text-[10px] text-cyan-300 font-semibold uppercase tracking-wider">
+                  Verhuur Uithoorn
+                </span>
+              </div>
             </div>
             <p className="text-slate-400 leading-relaxed text-xs">
-              Dé specialist in verhuur van professionele silent disco sets voor Nederland & België. Vanaf 10 tot 350+ koptelefoons.
+              Dé specialist in verhuur van professionele silent disco sets. Afhalen in Uithoorn (regio Amstelland) of gratis bezorgd & retour via PostNL.
             </p>
             <div className="flex items-center gap-2 text-emerald-400 text-[11px] font-medium pt-1">
               <ShieldCheck className="w-3.5 h-3.5" />

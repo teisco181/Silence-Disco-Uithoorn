@@ -1,6 +1,7 @@
 import React from 'react';
 import { useRental } from '../context/RentalContext';
 import { Sparkles, Check, ArrowRight, Tag, Settings, Clock, Headphones, Radio } from 'lucide-react';
+import specialOfferImg from '../assets/images/silent_disco_special_offer_1793196647101.jpg';
 
 export const OffersSection: React.FC = () => {
   const { offers, applyOffer, setActiveTab } = useRental();
@@ -41,7 +42,7 @@ export const OffersSection: React.FC = () => {
 
             <div className="lg:col-span-5 h-64 lg:h-full relative min-h-[260px]">
               <img
-                src="/src/assets/images/silent_disco_special_offer_1793196647101.jpg"
+                src={specialOfferImg}
                 alt="Silent Disco Feest Aanbiedingen"
                 referrerPolicy="no-referrer"
                 className="w-full h-full object-cover object-center"

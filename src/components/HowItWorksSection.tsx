@@ -12,6 +12,7 @@ import {
   Smartphone,
   Sliders,
 } from 'lucide-react';
+import equipmentCaseImg from '../assets/images/silent_disco_equipment_case_1793196647576.jpg';
 
 export const HowItWorksSection: React.FC = () => {
   const { setActiveTab } = useRental();
@@ -163,7 +164,7 @@ export const HowItWorksSection: React.FC = () => {
 
             <div className="lg:col-span-6 h-72 lg:h-[420px] relative">
               <img
-                src="/src/assets/images/silent_disco_equipment_case_1793196647576.jpg"
+                src={equipmentCaseImg}
                 alt="Silent Disco flightcase met koptelefoons en zenders"
                 referrerPolicy="no-referrer"
                 className="w-full h-full object-cover object-center"

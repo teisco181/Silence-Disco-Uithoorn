@@ -271,10 +271,9 @@ export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Cart operations
   const setHeadphonesCount = (count: number) => {
-    const clamped = Math.max(
-      settings.minHeadphones,
-      Math.min(settings.totalStockHeadphones, count)
-    );
+    const minH = settings.minHeadphones || 5;
+    const maxH = Math.min(settings.totalStockHeadphones, settings.maxHeadphonesPerOrder || settings.totalStockHeadphones);
+    const clamped = Math.max(minH, Math.min(maxH, count));
     setCart((prev) => ({
       ...prev,
       headphonesCount: clamped,
@@ -296,7 +295,10 @@ export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const start = new Date(startDate);
     const end = new Date(returnDate);
     const diffTime = Math.abs(end.getTime() - start.getTime());
-    const days = Math.max(1, Math.round(diffTime / (1000 * 60 * 60 * 24)));
+    const rawDays = Math.max(1, Math.round(diffTime / (1000 * 60 * 60 * 24)));
+    const minD = settings.minDays || 1;
+    const maxD = settings.maxDays || 14;
+    const days = Math.max(minD, Math.min(maxD, rawDays));
 
     setCart((prev) => ({
       ...prev,
@@ -309,9 +311,11 @@ export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const setRentalDays = (days: number) => {
+    const minD = settings.minDays || 1;
+    const maxD = settings.maxDays || 14;
     setCart((prev) => ({
       ...prev,
-      rentalDays: Math.max(1, days),
+      rentalDays: Math.max(minD, Math.min(maxD, days)),
     }));
   };
 

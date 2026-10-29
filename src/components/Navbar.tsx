@@ -1,6 +1,7 @@
 import React from 'react';
 import { useRental, ActiveTab } from '../context/RentalContext';
-import { Headphones, Sliders, Sparkles, HelpCircle, Settings, ShoppingBag, Calendar } from 'lucide-react';
+import { Sliders, Sparkles, HelpCircle, Settings, ShoppingBag, Calendar } from 'lucide-react';
+import brandLogo from '../assets/images/logo_silence_disco_uithoorn_1793259331317.jpg';
 
 export const Navbar: React.FC = () => {
   const { activeTab, setActiveTab, openBookingModal, pricing } = useRental();
@@ -17,22 +18,24 @@ export const Navbar: React.FC = () => {
     <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between gap-8 h-20">
-          {/* Zone 1: Single text element wordmark with logo mark */}
+          {/* Zone 1: Brand wordmark with circular neon logo */}
           <button
             onClick={() => setActiveTab('home')}
             className="flex items-center gap-3 text-left focus:outline-none group shrink-0 cursor-pointer"
           >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 via-indigo-500 to-pink-500 p-0.5 shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform duration-200">
-              <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
-                <Headphones className="w-5 h-5 text-cyan-400 group-hover:text-pink-400 transition-colors" />
-              </div>
+            <div className="relative w-11 h-11 rounded-full p-0.5 bg-gradient-to-tr from-cyan-400 via-purple-500 to-pink-500 shadow-lg shadow-cyan-500/20 group-hover:scale-105 transition-transform duration-200 shrink-0">
+              <img
+                src={brandLogo}
+                alt="Silence Disco Verhuur Uithoorn Logo"
+                className="w-full h-full object-cover rounded-full bg-black"
+              />
             </div>
             <div className="flex flex-col">
-              <span className="text-xl font-extrabold tracking-tight text-white font-display whitespace-nowrap">
-                Silent<span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-indigo-300 to-pink-400">Groove</span>
+              <span className="text-lg sm:text-xl font-extrabold tracking-tight text-white font-display whitespace-nowrap">
+                Silence <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-indigo-300 to-pink-400">Disco</span>
               </span>
-              <span className="text-[11px] text-slate-400 tracking-wider font-medium uppercase whitespace-nowrap">
-                Silent Disco Verhuur
+              <span className="text-[10px] text-cyan-300 tracking-widest font-bold uppercase whitespace-nowrap">
+                Verhuur Uithoorn
               </span>
             </div>
           </button>
