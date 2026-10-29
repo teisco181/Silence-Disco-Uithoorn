@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useMemo } from 'react';
+import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
 import {
   RentalSettings,
   DealOffer,
@@ -7,14 +7,35 @@ import {
   BookingRecord,
   OrderStatus,
   PaymentStatus,
+  CustomProduct,
+  UserProfile,
+  ChatMessage,
+  Conversation,
 } from '../types/rental';
 import {
   DEFAULT_RENTAL_SETTINGS,
   DEFAULT_OFFERS,
   DEFAULT_BOOKINGS,
+  DEFAULT_CUSTOM_PRODUCTS,
 } from '../data/defaultSettings';
 import { calculatePricing } from '../utils/pricingCalculator';
-import { checkRangeAvailability, getAvailabilityForDate } from '../utils/availability';
+import { checkRangeAvailability } from '../utils/availability';
+import {
+  auth,
+  loginWithGoogle,
+  logoutUser,
+  isUserAdmin,
+  syncUserProfile,
+  subscribeToCustomProducts,
+  saveCustomProduct,
+  deleteCustomProduct as deleteCustomProductDb,
+  subscribeToAdminConversations,
+  subscribeToMessages,
+  sendChatMessage,
+  markConversationAsRead,
+  saveBookingToFirestore,
+} from '../firebase/chatService';
+import { onAuthStateChanged, User } from 'firebase/auth';
 
 export type ActiveTab = 'home' | 'aanbiedingen' | 'beschikbaarheid' | 'hoe-werkt-het' | 'beheer';
 
@@ -22,6 +43,7 @@ interface RentalContextType {
   settings: RentalSettings;
   offers: DealOffer[];
   bookings: BookingRecord[];
+  customProducts: CustomProduct[];
   cart: RentalCart;
   pricing: PricingCalculation;
   availabilityCheck: {
@@ -34,46 +56,78 @@ interface RentalContextType {
   setActiveTab: (tab: ActiveTab) => void;
   updateSettings: (newSettings: RentalSettings) => void;
   resetSettings: () => void;
+  
+  // Custom Products CRUD
+  addCustomProduct: (product: CustomProduct) => Promise<void>;
+  updateCustomProduct: (id: string, updated: Partial<CustomProduct>) => Promise<void>;
+  deleteCustomProduct: (id: string) => Promise<void>;
+  setProductCountInCart: (productId: string, count: number) => void;
+
+  // Offers
   updateOffer: (id: string, updated: Partial<DealOffer>) => void;
   addOffer: (offer: DealOffer) => void;
   deleteOffer: (id: string) => void;
   resetOffers: () => void;
+  applyOffer: (offerId: string) => void;
+  clearOffer: () => void;
+
+  // Cart operations
   setHeadphonesCount: (count: number) => void;
   setTransmittersCount: (count: number) => void;
   setDates: (startDate: string, eventDate: string, returnDate: string, isWeekend?: boolean) => void;
   setRentalDays: (days: number) => void;
   setIsWeekend: (isWeekend: boolean) => void;
-  setDiscoLightsCount: (count: number) => void;
-  setPowerbanksCount: (count: number) => void;
   setIncludeDJCables: (include: boolean) => void;
-  setDeliveryType: (type: 'delivery' | 'pickup') => void;
-  applyOffer: (offerId: string) => void;
-  clearOffer: () => void;
   setPromoCode: (code: string) => void;
+
+  // Bookings
   isBookingModalOpen: boolean;
   openBookingModal: () => void;
   closeBookingModal: () => void;
-  addBooking: (booking: BookingRecord) => void;
+  addBooking: (booking: BookingRecord) => Promise<void>;
   updateBookingStatus: (id: string, orderStatus: OrderStatus, paymentStatus?: PaymentStatus) => void;
   deleteBooking: (id: string) => void;
   latestConfirmedBooking: BookingRecord | null;
   setLatestConfirmedBooking: (booking: BookingRecord | null) => void;
+
+  // Toast
   toastMessage: string | null;
   showToast: (msg: string) => void;
+
+  // Authentication & Accounts
+  currentUser: User | null;
+  userProfile: UserProfile | null;
+  isAdmin: boolean;
+  isAuthModalOpen: boolean;
+  setIsAuthModalOpen: (open: boolean) => void;
+  handleGoogleLogin: () => Promise<void>;
+  handleDemoLogin: (role: 'customer' | 'admin', name?: string, email?: string) => void;
+  handleLogout: () => Promise<void>;
+
+  // Real-time Chat
+  isChatDrawerOpen: boolean;
+  setIsChatDrawerOpen: (open: boolean) => void;
+  activeConversationId: string | null;
+  setActiveConversationId: (id: string | null) => void;
+  adminConversations: Conversation[];
+  chatMessages: ChatMessage[];
+  unreadChatCount: number;
+  handleSendMessage: (text: string, convId?: string) => Promise<void>;
+  openChatForCustomer: (convId?: string) => void;
 }
 
 const RentalContext = createContext<RentalContextType | undefined>(undefined);
 
-const SETTINGS_KEY = 'silentgroove_rental_settings_v1';
-const OFFERS_KEY = 'silentgroove_offers_v1';
-const BOOKINGS_KEY = 'silentgroove_bookings_v1';
+const SETTINGS_KEY = 'silentgroove_rental_settings_v2';
+const OFFERS_KEY = 'silentgroove_offers_v2';
+const BOOKINGS_KEY = 'silentgroove_bookings_v2';
+const PRODUCTS_KEY = 'silentgroove_custom_products_v2';
+const DEMO_USER_KEY = 'silentgroove_demo_user_v2';
 
-// Default initial dates (Upcoming Friday through Monday)
 const getInitialDates = () => {
   const today = new Date();
-  // Find next Friday
   const nextFriday = new Date(today);
-  const dayOfWeek = today.getDay(); // 0 is Sunday, 5 is Friday
+  const dayOfWeek = today.getDay();
   const daysUntilFriday = (5 - dayOfWeek + 7) % 7 || 7;
   nextFriday.setDate(today.getDate() + daysUntilFriday);
 
@@ -93,6 +147,7 @@ const getInitialDates = () => {
 export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const initialDates = useMemo(() => getInitialDates(), []);
 
+  // Settings
   const [settings, setSettings] = useState<RentalSettings>(() => {
     try {
       const saved = localStorage.getItem(SETTINGS_KEY);
@@ -103,6 +158,18 @@ export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return DEFAULT_RENTAL_SETTINGS;
   });
 
+  // Custom Products (managed by owner)
+  const [customProducts, setCustomProducts] = useState<CustomProduct[]>(() => {
+    try {
+      const saved = localStorage.getItem(PRODUCTS_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return DEFAULT_CUSTOM_PRODUCTS;
+  });
+
+  // Offers
   const [offers, setOffers] = useState<DealOffer[]>(() => {
     try {
       const saved = localStorage.getItem(OFFERS_KEY);
@@ -113,6 +180,7 @@ export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return DEFAULT_OFFERS;
   });
 
+  // Bookings
   const [bookings, setBookings] = useState<BookingRecord[]>(() => {
     try {
       const saved = localStorage.getItem(BOOKINGS_KEY);
@@ -123,6 +191,7 @@ export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return DEFAULT_BOOKINGS;
   });
 
+  // Cart: Always pickup in Uithoorn
   const [cart, setCart] = useState<RentalCart>({
     headphonesCount: 25,
     transmittersCount: 2,
@@ -131,10 +200,9 @@ export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     returnDate: initialDates.returnDate,
     rentalDays: 3,
     isWeekend: true,
-    discoLightsCount: 1,
-    powerbanksCount: 0,
+    selectedProducts: {},
     includeDJCables: true,
-    deliveryType: 'delivery',
+    deliveryType: 'pickup',
     appliedOfferId: null,
     promoCode: '',
   });
@@ -144,6 +212,126 @@ export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [latestConfirmedBooking, setLatestConfirmedBooking] = useState<BookingRecord | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Auth state
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [demoUser, setDemoUser] = useState<UserProfile | null>(() => {
+    try {
+      const saved = localStorage.getItem(DEMO_USER_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return null;
+  });
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
+  // Chat state
+  const [isChatDrawerOpen, setIsChatDrawerOpen] = useState(false);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [adminConversations, setAdminConversations] = useState<Conversation[]>([]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+
+  // Listen to Firebase Auth state
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setCurrentUser(user);
+      if (user) {
+        setDemoUser(null);
+        localStorage.removeItem(DEMO_USER_KEY);
+        await syncUserProfile(user);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Listen to Custom Products from Firestore
+  useEffect(() => {
+    const unsub = subscribeToCustomProducts((remoteProds) => {
+      if (remoteProds && remoteProds.length > 0) {
+        setCustomProducts(remoteProds);
+        try {
+          localStorage.setItem(PRODUCTS_KEY, JSON.stringify(remoteProds));
+        } catch {
+          // ignore
+        }
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  // Determine effective user profile & admin state
+  const userProfile: UserProfile | null = useMemo(() => {
+    if (currentUser) {
+      const admin = isUserAdmin(currentUser);
+      return {
+        uid: currentUser.uid,
+        email: currentUser.email || '',
+        displayName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Klant',
+        role: admin ? 'admin' : 'customer',
+        createdAt: new Date().toISOString(),
+      };
+    }
+    return demoUser;
+  }, [currentUser, demoUser]);
+
+  const isAdmin = useMemo(() => {
+    if (currentUser) return isUserAdmin(currentUser);
+    if (demoUser) return demoUser.role === 'admin';
+    return false;
+  }, [currentUser, demoUser]);
+
+  // Subscribe to Admin Conversations if admin
+  useEffect(() => {
+    if (isAdmin) {
+      const unsub = subscribeToAdminConversations((convs) => {
+        setAdminConversations(convs);
+      });
+      return () => unsub();
+    }
+  }, [isAdmin]);
+
+  // Determine current active chat conversation ID
+  const effectiveConversationId = useMemo(() => {
+    if (isAdmin) {
+      return activeConversationId || (adminConversations.length > 0 ? adminConversations[0].id : null);
+    }
+    if (userProfile) {
+      return `customer_${userProfile.uid}`;
+    }
+    // Guest customer without login uses a stable local session ID
+    let guestId = localStorage.getItem('silentgroove_guest_chat_id');
+    if (!guestId) {
+      guestId = 'guest_' + Math.random().toString(36).substring(2, 9);
+      localStorage.setItem('silentgroove_guest_chat_id', guestId);
+    }
+    return `customer_${guestId}`;
+  }, [isAdmin, activeConversationId, adminConversations, userProfile]);
+
+  // Subscribe to messages in current active conversation
+  useEffect(() => {
+    if (!effectiveConversationId) return;
+    const unsub = subscribeToMessages(effectiveConversationId, (msgs) => {
+      setChatMessages(msgs);
+    });
+    return () => unsub();
+  }, [effectiveConversationId]);
+
+  // Mark conversation read when chat is open
+  useEffect(() => {
+    if (isChatDrawerOpen && effectiveConversationId) {
+      markConversationAsRead(effectiveConversationId, isAdmin ? 'admin' : 'customer');
+    }
+  }, [isChatDrawerOpen, effectiveConversationId, isAdmin]);
+
+  // Compute unread count for badge
+  const unreadChatCount = useMemo(() => {
+    if (isAdmin) {
+      return adminConversations.reduce((sum, c) => sum + (c.unreadByAdmin || 0), 0);
+    }
+    // For customer
+    return chatMessages.filter((m) => m.senderRole === 'admin' && !m.isRead).length;
+  }, [isAdmin, adminConversations, chatMessages]);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => {
@@ -151,6 +339,93 @@ export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }, 3500);
   };
 
+  // Custom Products CRUD
+  const addCustomProduct = async (product: CustomProduct) => {
+    setCustomProducts((prev) => {
+      const next = [product, ...prev];
+      try {
+        localStorage.setItem(PRODUCTS_KEY, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+    showToast(`Product "${product.name}" toegevoegd!`);
+    try {
+      await saveCustomProduct(product);
+    } catch {
+      // Saved locally
+    }
+  };
+
+  const updateCustomProduct = async (id: string, updated: Partial<CustomProduct>) => {
+    let updatedProd: CustomProduct | undefined;
+    setCustomProducts((prev) => {
+      const next = prev.map((p) => {
+        if (p.id === id) {
+          updatedProd = { ...p, ...updated };
+          return updatedProd;
+        }
+        return p;
+      });
+      try {
+        localStorage.setItem(PRODUCTS_KEY, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+    showToast('Product bijgewerkt!');
+    if (updatedProd) {
+      try {
+        await saveCustomProduct(updatedProd);
+      } catch {
+        // Saved locally
+      }
+    }
+  };
+
+  const deleteCustomProduct = async (id: string) => {
+    setCustomProducts((prev) => {
+      const next = prev.filter((p) => p.id !== id);
+      try {
+        localStorage.setItem(PRODUCTS_KEY, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+    // Remove from cart if present
+    setCart((prev) => {
+      const nextProds = { ...prev.selectedProducts };
+      delete nextProds[id];
+      return { ...prev, selectedProducts: nextProds };
+    });
+    showToast('Product verwijderd');
+    try {
+      await deleteCustomProductDb(id);
+    } catch {
+      // Deleted locally
+    }
+  };
+
+  const setProductCountInCart = (productId: string, count: number) => {
+    const prod = customProducts.find((p) => p.id === productId);
+    const maxStock = prod ? prod.stock : 99;
+    const clamped = Math.max(0, Math.min(maxStock, count));
+
+    setCart((prev) => {
+      const next = { ...prev.selectedProducts };
+      if (clamped === 0) {
+        delete next[productId];
+      } else {
+        next[productId] = clamped;
+      }
+      return { ...prev, selectedProducts: next };
+    });
+  };
+
+  // Settings
   const updateSettings = (newSettings: RentalSettings) => {
     setSettings(newSettings);
     try {
@@ -158,7 +433,7 @@ export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     } catch {
       // ignore
     }
-    showToast('Tarieven en voorraad succesvol bijgewerkt!');
+    showToast('Tarieven en instellingen succesvol bijgewerkt!');
   };
 
   const resetSettings = () => {
@@ -171,6 +446,7 @@ export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     showToast('Standaard instellingen en prijzen hersteld');
   };
 
+  // Offers
   const updateOffer = (id: string, updated: Partial<DealOffer>) => {
     setOffers((prev) => {
       const next = prev.map((item) => (item.id === id ? { ...item, ...updated } : item));
@@ -220,8 +496,32 @@ export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     showToast('Standaard aanbiedingen hersteld');
   };
 
+  const applyOffer = (offerId: string) => {
+    const offer = offers.find((o) => o.id === offerId);
+    if (!offer) return;
+
+    setCart((prev) => ({
+      ...prev,
+      headphonesCount: offer.headphonesCount,
+      transmittersCount: offer.transmittersCount,
+      rentalDays: offer.rentalDurationDays,
+      isWeekend: offer.isWeekendDeal,
+      selectedProducts: {},
+      includeDJCables: offer.includeDJCables,
+      deliveryType: 'pickup',
+      appliedOfferId: offer.id,
+      promoCode: '',
+    }));
+    setActiveTab('home');
+    showToast(`Pakket "${offer.title}" toegepast op de calculator!`);
+  };
+
+  const clearOffer = () => {
+    setCart((prev) => ({ ...prev, appliedOfferId: null }));
+  };
+
   // Booking operations
-  const addBooking = (booking: BookingRecord) => {
+  const addBooking = async (booking: BookingRecord) => {
     setBookings((prev) => {
       const next = [booking, ...prev];
       try {
@@ -232,7 +532,12 @@ export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return next;
     });
     setLatestConfirmedBooking(booking);
-    showToast(`Boeking #${booking.id} succesvol voltooid en betaald!`);
+    showToast(`Reservering #${booking.id} bevestigd! Klaar voor afhalen in Uithoorn.`);
+    try {
+      await saveBookingToFirestore(booking);
+    } catch {
+      // Saved locally
+    }
   };
 
   const updateBookingStatus = (id: string, orderStatus: OrderStatus, paymentStatus?: PaymentStatus) => {
@@ -253,7 +558,7 @@ export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
       return next;
     });
-    showToast(`Boekingsstatus bijgewerkt naar "${orderStatus}"`);
+    showToast(`Status bijgewerkt naar "${orderStatus}"`);
   };
 
   const deleteBooking = (id: string) => {
@@ -291,7 +596,6 @@ export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const setDates = (startDate: string, eventDate: string, returnDate: string, isWeekend = true) => {
-    // Calculate days between start and return
     const start = new Date(startDate);
     const end = new Date(returnDate);
     const diffTime = Math.abs(end.getTime() - start.getTime());
@@ -326,53 +630,8 @@ export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }));
   };
 
-  const setDiscoLightsCount = (count: number) => {
-    setCart((prev) => ({
-      ...prev,
-      discoLightsCount: Math.max(0, count),
-      appliedOfferId: null,
-    }));
-  };
-
-  const setPowerbanksCount = (count: number) => {
-    setCart((prev) => ({
-      ...prev,
-      powerbanksCount: Math.max(0, count),
-      appliedOfferId: null,
-    }));
-  };
-
   const setIncludeDJCables = (includeDJCables: boolean) => {
     setCart((prev) => ({ ...prev, includeDJCables }));
-  };
-
-  const setDeliveryType = (deliveryType: 'delivery' | 'pickup') => {
-    setCart((prev) => ({ ...prev, deliveryType }));
-  };
-
-  const applyOffer = (offerId: string) => {
-    const offer = offers.find((o) => o.id === offerId);
-    if (!offer) return;
-
-    setCart((prev) => ({
-      ...prev,
-      headphonesCount: offer.headphonesCount,
-      transmittersCount: offer.transmittersCount,
-      rentalDays: offer.rentalDurationDays,
-      isWeekend: offer.isWeekendDeal,
-      discoLightsCount: offer.discoLightsCount,
-      powerbanksCount: offer.powerbanksCount,
-      includeDJCables: offer.includeDJCables,
-      deliveryType: 'delivery',
-      appliedOfferId: offer.id,
-      promoCode: '',
-    }));
-    setActiveTab('home');
-    showToast(`Aanbieding "${offer.title}" toegepast op de calculator!`);
-  };
-
-  const clearOffer = () => {
-    setCart((prev) => ({ ...prev, appliedOfferId: null }));
   };
 
   const setPromoCode = (code: string) => {
@@ -382,10 +641,96 @@ export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const openBookingModal = () => setIsBookingModalOpen(true);
   const closeBookingModal = () => setIsBookingModalOpen(false);
 
-  // Compute live price
+  // Authentication actions
+  const handleGoogleLogin = async () => {
+    try {
+      await loginWithGoogle();
+      setIsAuthModalOpen(false);
+      showToast('Succesvol ingelogd met Google!');
+    } catch {
+      showToast('Inloggen geannuleerd of mislukt');
+    }
+  };
+
+  const handleDemoLogin = (role: 'customer' | 'admin', name?: string, email?: string) => {
+    const demoProfile: UserProfile = {
+      uid: role === 'admin' ? 'admin_demo_uithoorn' : 'customer_' + Math.random().toString(36).substring(2, 7),
+      email: email || (role === 'admin' ? 'teisco181@gmail.com' : 'klant.uithoorn@gmail.com'),
+      displayName: name || (role === 'admin' ? 'Beheerder Uithoorn' : 'Klant Uithoorn'),
+      role,
+      city: 'Uithoorn',
+      createdAt: new Date().toISOString(),
+    };
+    setDemoUser(demoProfile);
+    try {
+      localStorage.setItem(DEMO_USER_KEY, JSON.stringify(demoProfile));
+    } catch {
+      // ignore
+    }
+    setIsAuthModalOpen(false);
+    showToast(role === 'admin' ? 'Ingelogd als Beheerder (Uithoorn)' : 'Ingelogd als Klant!');
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+    } catch {
+      // ignore
+    }
+    setDemoUser(null);
+    localStorage.removeItem(DEMO_USER_KEY);
+    showToast('Je bent uitgelogd');
+  };
+
+  // Chat message sending
+  const handleSendMessage = async (text: string, convId?: string) => {
+    const targetConvId = convId || effectiveConversationId;
+    if (!targetConvId || !text.trim()) return;
+
+    const senderRole = isAdmin ? 'admin' : 'customer';
+    const senderName = userProfile?.displayName || (isAdmin ? 'Silence Disco Uithoorn' : 'Klant Uithoorn');
+    const senderEmail = userProfile?.email || (isAdmin ? 'teisco181@gmail.com' : 'klant@uithoorn.nl');
+    const senderId = userProfile?.uid || 'guest';
+
+    // Local instant preview if needed
+    const newMsg: ChatMessage = {
+      id: 'local_' + Date.now(),
+      conversationId: targetConvId,
+      senderId,
+      senderName,
+      senderEmail,
+      senderRole,
+      text: text.trim(),
+      createdAt: new Date().toISOString(),
+      isRead: false,
+    };
+    setChatMessages((prev) => [...prev, newMsg]);
+
+    try {
+      await sendChatMessage({
+        conversationId: targetConvId,
+        senderId,
+        senderName,
+        senderEmail,
+        senderRole,
+        text: text.trim(),
+        customerName: senderRole === 'customer' ? senderName : undefined,
+        customerEmail: senderRole === 'customer' ? senderEmail : undefined,
+      });
+    } catch (err) {
+      console.warn('Real-time chat sent locally, syncing with Firestore:', err);
+    }
+  };
+
+  const openChatForCustomer = (convId?: string) => {
+    if (convId) setActiveConversationId(convId);
+    setIsChatDrawerOpen(true);
+  };
+
+  // Calculate live pricing with custom products and €0 shipping
   const pricing = useMemo(() => {
-    return calculatePricing(cart, settings, offers);
-  }, [cart, settings, offers]);
+    return calculatePricing(cart, settings, offers, customProducts);
+  }, [cart, settings, offers, customProducts]);
 
   // Compute availability for current cart selection
   const availabilityCheck = useMemo(() => {
@@ -404,6 +749,7 @@ export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         settings,
         offers,
         bookings,
+        customProducts,
         cart,
         pricing,
         availabilityCheck,
@@ -411,21 +757,22 @@ export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setActiveTab,
         updateSettings,
         resetSettings,
+        addCustomProduct,
+        updateCustomProduct,
+        deleteCustomProduct,
+        setProductCountInCart,
         updateOffer,
         addOffer,
         deleteOffer,
         resetOffers,
+        applyOffer,
+        clearOffer,
         setHeadphonesCount,
         setTransmittersCount,
         setDates,
         setRentalDays,
         setIsWeekend,
-        setDiscoLightsCount,
-        setPowerbanksCount,
         setIncludeDJCables,
-        setDeliveryType,
-        applyOffer,
-        clearOffer,
         setPromoCode,
         isBookingModalOpen,
         openBookingModal,
@@ -437,6 +784,23 @@ export const RentalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setLatestConfirmedBooking,
         toastMessage,
         showToast,
+        currentUser,
+        userProfile,
+        isAdmin,
+        isAuthModalOpen,
+        setIsAuthModalOpen,
+        handleGoogleLogin,
+        handleDemoLogin,
+        handleLogout,
+        isChatDrawerOpen,
+        setIsChatDrawerOpen,
+        activeConversationId,
+        setActiveConversationId,
+        adminConversations,
+        chatMessages,
+        unreadChatCount,
+        handleSendMessage,
+        openChatForCustomer,
       }}
     >
       {children}

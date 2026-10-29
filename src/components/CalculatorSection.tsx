@@ -1,19 +1,16 @@
 import React, { useState } from 'react';
 import { useRental } from '../context/RentalContext';
 import {
-  Headphones,
-  Radio,
-  Calendar,
   Sparkles,
-  Truck,
   Check,
   Plus,
   Minus,
   Settings,
   Info,
   Tag,
-  Zap,
   ArrowRight,
+  MapPin,
+  Package,
 } from 'lucide-react';
 
 export const CalculatorSection: React.FC = () => {
@@ -21,20 +18,20 @@ export const CalculatorSection: React.FC = () => {
     settings,
     cart,
     pricing,
+    customProducts,
     availabilityCheck,
     setDates,
     setHeadphonesCount,
     setTransmittersCount,
     setRentalDays,
     setIsWeekend,
-    setDiscoLightsCount,
-    setPowerbanksCount,
-    setDeliveryType,
+    setProductCountInCart,
     setPromoCode,
     clearOffer,
     openBookingModal,
     setActiveTab,
     showToast,
+    isAdmin,
   } = useRental();
 
   const [promoInput, setPromoInput] = useState('');
@@ -48,6 +45,8 @@ export const CalculatorSection: React.FC = () => {
     showToast(`Kortingscode "${promoInput.trim().toUpperCase()}" verwerkt!`);
   };
 
+  const activeCustomProducts = customProducts.filter((p) => p.active);
+
   return (
     <section id="calculator" className="py-14 sm:py-20 bg-slate-900 text-slate-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -56,26 +55,29 @@ export const CalculatorSection: React.FC = () => {
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 pb-6 border-b border-slate-800 gap-4">
           <div>
             <div className="flex items-center gap-2 text-xs font-semibold text-cyan-400 tracking-wider uppercase mb-2">
-              <span>Stel Zelf Samen</span>
+              <span className="flex items-center gap-1">
+                <MapPin className="w-3.5 h-3.5 text-pink-500" />
+                Uithoorn & Omstreken
+              </span>
               <span aria-hidden="true">·</span>
-              <span>Realtime Tariefberekening</span>
+              <span>Alleen Zelf Ophalen</span>
             </div>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-white font-display tracking-tight">
-              Silent Disco Set Configurator
+              Silent Disco Berekenen & Reserveren
             </h2>
             <p className="text-sm sm:text-base text-slate-400 mt-1 max-w-2xl">
-              Kies het aantal koptelefoons, gewenste zenders en accessoires. Hoe groter je groep, hoe lager de prijs per persoon!
+              Kies het aantal koptelefoons en zenders. Altijd compleet met alle kabels en direct speelklaar af te halen in Uithoorn!
             </p>
           </div>
 
           <div className="flex items-center gap-3">
             <button
               onClick={() => setActiveTab('beheer')}
-              className="flex items-center gap-2 px-3.5 py-2 text-xs font-medium text-emerald-300 bg-emerald-950/60 border border-emerald-800/80 rounded-lg hover:bg-emerald-900/60 transition-colors whitespace-nowrap shrink-0"
-              title="Pas de basisprijzen, voorraad en staffels aan"
+              className="flex items-center gap-2 px-3.5 py-2 text-xs font-medium text-emerald-300 bg-emerald-950/60 border border-emerald-800/80 rounded-lg hover:bg-emerald-900/60 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              title="Pas prijzen, producten en voorraad aan"
             >
               <Settings className="w-3.5 h-3.5" />
-              <span>Prijzen & Voorraad Aanpassen</span>
+              <span>Prijzen & Producten Beheren</span>
             </button>
           </div>
         </div>
@@ -88,7 +90,7 @@ export const CalculatorSection: React.FC = () => {
                 <Sparkles className="w-4 h-4" />
               </div>
               <div>
-                <p className="text-xs font-semibold text-amber-300 uppercase tracking-wider">Aanbieding Actief</p>
+                <p className="text-xs font-semibold text-amber-300 uppercase tracking-wider">Pakket Deal Actief</p>
                 <p className="text-sm font-bold text-white">
                   {pricing.appliedDiscountName || 'Speciaal Pakket Voordeel Toegepast'}
                 </p>
@@ -98,7 +100,7 @@ export const CalculatorSection: React.FC = () => {
               onClick={clearOffer}
               className="px-3 py-1.5 text-xs font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
             >
-              Terug naar handmatige configuratie
+              Terug naar vrije configuratie
             </button>
           </div>
         )}
@@ -121,7 +123,7 @@ export const CalculatorSection: React.FC = () => {
                   </h3>
                 </div>
                 <div className="text-xs text-slate-400">
-                  Beschikbaar in voorraad:{' '}
+                  Totale voorraad Uithoorn:{' '}
                   <span className="font-mono text-cyan-300 font-bold">
                     {settings.totalStockHeadphones} stuks
                   </span>
@@ -164,39 +166,39 @@ export const CalculatorSection: React.FC = () => {
 
                 {/* Live Current Tier price info */}
                 <div className="text-left sm:text-right">
-                  <div className="text-xs text-slate-400">Huidige staffelprijs:</div>
+                  <div className="text-xs text-slate-400">Staffeltarief:</div>
                   <div className="text-lg font-bold text-cyan-400 font-mono tabular-nums">
                     €{pricing.headphonesUnitPrice.toFixed(2)}{' '}
-                    <span className="text-xs text-slate-400 font-normal">per stuk / dag</span>
+                    <span className="text-xs text-slate-400 font-normal">per stuk</span>
                   </div>
                 </div>
               </div>
 
               {/* Quick Select Presets */}
               <div className="space-y-2">
-                <div className="text-xs text-slate-400 font-medium">Snelle selectie populaire groepsgroottes:</div>
+                <div className="text-xs text-slate-400 font-medium">Snelle selectie aantal feestgangers:</div>
                 <div className="flex flex-wrap gap-2">
                   {quickHeadphonePresets.map((qty) => (
                     <button
                       key={qty}
                       onClick={() => setHeadphonesCount(qty)}
-                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                         cart.headphonesCount === qty
                           ? 'bg-cyan-500 text-slate-950 shadow-md font-bold'
                           : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'
                       }`}
                     >
-                      {qty} gasten
+                      {qty} personen
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Volume Discount Tiers table preview */}
+              {/* Volume Discount Tiers */}
               <div className="mt-5 pt-4 border-t border-slate-800/80">
                 <div className="flex items-center gap-1.5 text-xs font-medium text-slate-400 mb-2">
                   <Tag className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>Volumekorting staffels (automatisch verrekend):</span>
+                  <span>Automatische staffelkortingen per koptelefoon:</span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {settings.tierPricing.map((tier, idx) => {
@@ -224,7 +226,6 @@ export const CalculatorSection: React.FC = () => {
                   })}
                 </div>
               </div>
-
             </div>
 
             {/* Step 2: Transmitters / Channels */}
@@ -236,15 +237,12 @@ export const CalculatorSection: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="text-lg font-bold text-white font-display">
-                      Aantal Muziekkanalen & Zenders
+                      Muziekkanalen & Zenders
                     </h3>
                     <p className="text-xs text-slate-400">
-                      Elke zender creëert 1 apart muziekkanaal met eigen LED kleur op de koptelefoons.
+                      Elke zender is 1 kanaal. Gasten switchen met 1 druk op de knop tussen de kanalen!
                     </p>
                   </div>
-                </div>
-                <div className="text-xs text-slate-400">
-                  €{settings.pricePerTransmitter.toFixed(2)} per zender
                 </div>
               </div>
 
@@ -253,19 +251,22 @@ export const CalculatorSection: React.FC = () => {
                   {
                     channels: 1,
                     title: '1 Kanaal (Rood)',
-                    subtitle: '1 muziekbron (Spotify of 1 DJ)',
+                    subtitle: '1 muziekbron (Spotify of 1 DJ) · Zender inbegrepen',
+                    extraCost: 'Inbegrepen in basisprijs',
                     recommended: false,
                   },
                   {
                     channels: 2,
-                    title: '2 Kanalen (Rood + Blauw)',
+                    title: '2 Kanalen (Rood & Blauw)',
                     subtitle: 'Pop vs. Urban / 2 DJ strijd',
+                    extraCost: `+€${settings.pricePerTransmitter.toFixed(2)} extra`,
                     recommended: false,
                   },
                   {
                     channels: 3,
-                    title: '3 Kanalen (Rood, Blauw & Groen)',
+                    title: '3 Kanalen (Rood, Blauw, Groen)',
                     subtitle: 'De ultieme Silent Disco battle!',
+                    extraCost: `+€${(settings.pricePerTransmitter * 2).toFixed(2)} extra`,
                     recommended: true,
                   },
                 ].map((item) => {
@@ -291,8 +292,8 @@ export const CalculatorSection: React.FC = () => {
                         {isSelected && <Check className="w-4 h-4 text-cyan-400" />}
                       </div>
                       <p className="text-xs text-slate-400">{item.subtitle}</p>
-                      <div className="mt-3 text-xs font-mono font-semibold text-slate-300">
-                        {item.channels} × zender incl. kabels
+                      <div className="mt-3 text-xs font-mono font-semibold text-cyan-300">
+                        {item.extraCost}
                       </div>
                     </button>
                   );
@@ -302,12 +303,12 @@ export const CalculatorSection: React.FC = () => {
               <div className="mt-4 p-3 bg-slate-900/80 rounded-xl border border-slate-800 text-xs text-slate-300 flex items-center gap-2.5">
                 <Info className="w-4 h-4 text-cyan-400 shrink-0" />
                 <span>
-                  Alle benodigde aansluitkabels (voor smartphones met USB-C / Lightning, mini-jack & DJ mengpaneel tulp) zijn <strong>altijd gratis inbegrepen</strong>.
+                  Alle aansluitkabels (voor smartphone met USB-C / Lightning / mini-jack & DJ-mengpaneel tulp) zijn <strong>altijd gratis meegeleverd</strong>.
                 </span>
               </div>
             </div>
 
-            {/* Step 3: Huurperiode, Datum & Beschikbaarheid */}
+            {/* Step 3: Datum & Ophalen in Uithoorn */}
             <div className="p-6 bg-slate-950 rounded-2xl border border-slate-800 shadow-lg space-y-5">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2.5">
@@ -316,42 +317,22 @@ export const CalculatorSection: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="text-lg font-bold text-white font-display">
-                      Huurperiode, Feestdatum & Beschikbaarheid
+                      Huurperiode & Afhaaldatum Uithoorn
                     </h3>
                     <p className="text-xs text-slate-400">
-                      Kies je feestdatum. Wij reserveren de koffer tijdig voor jouw evenement.
+                      Zelf ophalen & retourneren op onze vaste locatie in Uithoorn.
                     </p>
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('beschikbaarheid')}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-cyan-300 bg-cyan-950/60 border border-cyan-800/60 rounded-lg hover:bg-cyan-900/60 transition-colors cursor-pointer"
-                >
-                  <Calendar className="w-3.5 h-3.5" />
-                  <span>Open Kalender</span>
-                </button>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-400 bg-emerald-950/40 border border-emerald-800/60 rounded-lg">
+                  <MapPin className="w-3.5 h-3.5" />
+                  <span>Uithoorn (Wiegerbruinlaan)</span>
+                </div>
               </div>
 
               {/* Quick Period Presets */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRentalDays(1);
-                    setIsWeekend(false);
-                  }}
-                  className={`p-4 rounded-xl border text-left transition-all cursor-pointer ${
-                    cart.rentalDays === 1 && !cart.isWeekend
-                      ? 'bg-slate-900 border-cyan-500'
-                      : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
-                  }`}
-                >
-                  <div className="font-bold text-sm text-white mb-1">1 Feestdag</div>
-                  <div className="text-xs text-slate-400">Voor doordeweekse borrels of eendaags event</div>
-                </button>
-
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => {
@@ -365,26 +346,26 @@ export const CalculatorSection: React.FC = () => {
                   }`}
                 >
                   <span className="absolute -top-2.5 right-3 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-amber-400 text-slate-950 rounded">
-                    3 Dagen = 1 Dag Prijs
+                    Weekend Voordeel
                   </span>
-                  <div className="font-bold text-sm text-white mb-1">Weekend Huuractie</div>
-                  <div className="text-xs text-slate-400">Vrijdag in huis, zaterdag feesten, maandag pas retour</div>
+                  <div className="font-bold text-sm text-white mb-1">Weekend Huur (Vrij t/m Maandag)</div>
+                  <div className="text-xs text-slate-400">Vrijdagmiddag ophalen, zaterdag feesten, maandag ontspannen inleveren voor 1 dagtarief!</div>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => {
-                    setRentalDays(2);
+                    setRentalDays(1);
                     setIsWeekend(false);
                   }}
                   className={`p-4 rounded-xl border text-left transition-all cursor-pointer ${
-                    cart.rentalDays === 2 && !cart.isWeekend
+                    cart.rentalDays === 1 && !cart.isWeekend
                       ? 'bg-slate-900 border-cyan-500'
                       : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
                   }`}
                 >
-                  <div className="font-bold text-sm text-white mb-1">2 Dagen</div>
-                  <div className="text-xs text-slate-400">Twee aaneengesloten doordeweekse dagen</div>
+                  <div className="font-bold text-sm text-white mb-1">1 Feestdag (Doordeweeks)</div>
+                  <div className="text-xs text-slate-400">Ophalen op de feestdag of de dag ervoor, volgende ochtend retour.</div>
                 </button>
               </div>
 
@@ -392,15 +373,13 @@ export const CalculatorSection: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-400 mb-1">
-                    Bezorg-/Afhaaldag
+                    Ophaaldag in Uithoorn
                   </label>
                   <input
                     type="date"
                     value={cart.startDate}
                     onChange={(e) => {
-                      const newStart = e.target.value;
-                      const eventDay = new Date(cart.eventDate);
-                      setDates(newStart, cart.eventDate, cart.returnDate, cart.isWeekend);
+                      setDates(e.target.value, cart.eventDate, cart.returnDate, cart.isWeekend);
                     }}
                     className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-400"
                   />
@@ -425,14 +404,13 @@ export const CalculatorSection: React.FC = () => {
 
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-400 mb-1">
-                    Retourdag (PostNL)
+                    Retourdag in Uithoorn
                   </label>
                   <input
                     type="date"
                     value={cart.returnDate}
                     onChange={(e) => {
-                      const newRet = e.target.value;
-                      setDates(cart.startDate, cart.eventDate, newRet, cart.isWeekend);
+                      setDates(cart.startDate, cart.eventDate, e.target.value, cart.isWeekend);
                     }}
                     className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-400"
                   />
@@ -452,11 +430,11 @@ export const CalculatorSection: React.FC = () => {
                   <span>
                     {availabilityCheck.isAvailable ? (
                       <>
-                        <strong>Live Beschikbaar:</strong> Nog{' '}
+                        <strong>Beschikbaar in Uithoorn:</strong> Nog{' '}
                         <span className="font-mono font-bold text-white">
                           {availabilityCheck.minAvailable}
                         </span>{' '}
-                        koptelefoons vrij voor deze datum!
+                        koptelefoons direct vrij voor deze datum!
                       </>
                     ) : (
                       <>
@@ -480,108 +458,104 @@ export const CalculatorSection: React.FC = () => {
               </div>
             </div>
 
-            {/* Step 4: Accessoires & Bezorging */}
+            {/* Step 4: Dynamische Producten Menu (Beheerder Extra's) */}
             <div className="p-6 bg-slate-950 rounded-2xl border border-slate-800 shadow-lg space-y-5">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-sm">
-                  4
-                </div>
-                <h3 className="text-lg font-bold text-white font-display">
-                  Optionele Accessoires & Bezorgwijze
-                </h3>
-              </div>
-
-              {/* Discolampen */}
-              <div className="flex items-center justify-between p-3.5 bg-slate-900 rounded-xl border border-slate-800 gap-4">
-                <div>
-                  <div className="font-bold text-sm text-white">Roterende RGB Party Discolamp</div>
-                  <div className="text-xs text-slate-400">
-                    Vult de hele woonkamer of partytent met kleurrijke dansende lichtbundels (+€{settings.pricePerDiscoLight.toFixed(2)} per stuk)
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-sm">
+                    4
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white font-display">
+                      Extra Producten & Opties
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Voeg optionele extra's toe aan je reservering (rechtstreeks beheerd door de eigenaar).
+                    </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+
+                {isAdmin && (
                   <button
-                    onClick={() => setDiscoLightsCount(cart.discoLightsCount - 1)}
-                    disabled={cart.discoLightsCount <= 0}
-                    className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-30 flex items-center justify-center text-white"
+                    onClick={() => setActiveTab('beheer')}
+                    className="text-xs font-semibold text-cyan-400 hover:text-cyan-300 underline cursor-pointer"
                   >
-                    <Minus className="w-3.5 h-3.5" />
+                    + Product toevoegen in Beheer
                   </button>
-                  <span className="w-8 text-center font-mono font-bold text-white">
-                    {cart.discoLightsCount}
-                  </span>
-                  <button
-                    onClick={() => setDiscoLightsCount(cart.discoLightsCount + 1)}
-                    className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-white"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                )}
               </div>
 
-              {/* Powerbanks voor buiten */}
-              <div className="flex items-center justify-between p-3.5 bg-slate-900 rounded-xl border border-slate-800 gap-4">
-                <div>
-                  <div className="font-bold text-sm text-white">Outdoor Accu / Powerbank voor Zender</div>
-                  <div className="text-xs text-slate-400">
-                    Maakt de zenders 100% draadloos voor feesten in het park, strand of bos (+€{settings.pricePowerbank.toFixed(2)} per stuk)
+              {activeCustomProducts.length === 0 ? (
+                <div className="p-4 bg-slate-900/60 rounded-xl border border-slate-800 text-xs text-slate-300 flex items-start gap-3">
+                  <Package className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-white">Standaard complete set inbegrepen:</p>
+                    <p className="text-slate-400 mt-0.5">
+                      Koptelefoons met LED, 3-kanaals zenders, audio-aansluitkabels en transportbox zijn volledig inbegrepen. Er zijn momenteel geen losse extra's vereist.
+                    </p>
+                    {isAdmin && (
+                      <p className="text-emerald-400 mt-2 font-medium">
+                        (Als beheerder kun je via het beheerpaneel nieuwe producten aanmaken met eigen prijs en voorraad)
+                      </p>
+                    )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setPowerbanksCount(cart.powerbanksCount - 1)}
-                    disabled={cart.powerbanksCount <= 0}
-                    className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-30 flex items-center justify-center text-white"
-                  >
-                    <Minus className="w-3.5 h-3.5" />
-                  </button>
-                  <span className="w-8 text-center font-mono font-bold text-white">
-                    {cart.powerbanksCount}
-                  </span>
-                  <button
-                    onClick={() => setPowerbanksCount(cart.powerbanksCount + 1)}
-                    className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-white"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                  </button>
+              ) : (
+                <div className="space-y-3">
+                  {activeCustomProducts.map((prod) => {
+                    const countInCart = cart.selectedProducts[prod.id] || 0;
+                    return (
+                      <div
+                        key={prod.id}
+                        className="flex items-center justify-between p-3.5 bg-slate-900 rounded-xl border border-slate-800 gap-4 flex-wrap"
+                      >
+                        <div>
+                          <div className="font-bold text-sm text-white">{prod.name}</div>
+                          {prod.description && (
+                            <div className="text-xs text-slate-400">{prod.description}</div>
+                          )}
+                          <div className="text-xs text-cyan-400 font-mono mt-0.5">
+                            +€{prod.price.toFixed(2)} per stuk · Nog {prod.stock} beschikbaar
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setProductCountInCart(prod.id, countInCart - 1)}
+                            disabled={countInCart <= 0}
+                            className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-30 flex items-center justify-center text-white cursor-pointer"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="w-8 text-center font-mono font-bold text-white">
+                            {countInCart}
+                          </span>
+                          <button
+                            onClick={() => setProductCountInCart(prod.id, countInCart + 1)}
+                            disabled={countInCart >= prod.stock}
+                            className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-30 flex items-center justify-center text-white cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              </div>
+              )}
 
-              {/* Delivery method toggle */}
-              <div className="pt-2">
-                <div className="text-xs font-semibold text-slate-300 mb-2">Bezorging of afhalen:</div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setDeliveryType('delivery')}
-                    className={`p-3.5 rounded-xl border text-left transition-all flex items-start gap-3 cursor-pointer ${
-                      cart.deliveryType === 'delivery'
-                        ? 'bg-slate-900 border-cyan-500'
-                        : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
-                    }`}
-                  >
-                    <Truck className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
-                    <div>
-                      <div className="font-bold text-sm text-white">PostNL Heen & Retour (+€{settings.shippingCostRoundtrip.toFixed(2)})</div>
-                      <div className="text-xs text-slate-400">Stevige koffer bezorgd aan huis incl. voorgedrukt retourlabel</div>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setDeliveryType('pickup')}
-                    className={`p-3.5 rounded-xl border text-left transition-all flex items-start gap-3 cursor-pointer ${
-                      cart.deliveryType === 'pickup'
-                        ? 'bg-slate-900 border-cyan-500'
-                        : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
-                    }`}
-                  >
-                    <Check className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-                    <div>
-                      <div className="font-bold text-sm text-white">Zelf Ophalen (Gratis)</div>
-                      <div className="text-xs text-slate-400">Afhaalpunt in Amsterdam, Utrecht of Eindhoven</div>
-                    </div>
-                  </button>
+              {/* Ophalen Banner */}
+              <div className="p-4 bg-emerald-950/30 rounded-xl border border-emerald-500/40 flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                  <MapPin className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-white">
+                    Zelf Ophalen & Retourneren in Uithoorn (Gratis)
+                  </div>
+                  <div className="text-xs text-slate-300">
+                    Locatie: Wiegerbruinlaan 12, Uithoorn. Exclusief voor Uithoorn en omringende dorpen (De Kwakel, Aalsmeer, Amstelveen, Mijdrecht). Geen verzending per post!
+                  </div>
                 </div>
               </div>
 
@@ -595,7 +569,7 @@ export const CalculatorSection: React.FC = () => {
               
               <div>
                 <h3 className="text-lg font-bold text-white font-display">Overzicht Reservering</h3>
-                <p className="text-xs text-slate-400">Direct inzicht in alle kosten</p>
+                <p className="text-xs text-slate-400">Afhalen in Uithoorn · Direct transparant</p>
               </div>
 
               {/* Itemized list */}
@@ -614,23 +588,14 @@ export const CalculatorSection: React.FC = () => {
                   </span>
                 </div>
 
-                {cart.discoLightsCount > 0 && (
-                  <div className="flex justify-between items-center">
-                    <span>{cart.discoLightsCount} × RGB Discolamp</span>
+                {pricing.customProductsBreakdown.map((item) => (
+                  <div key={item.id} className="flex justify-between items-center">
+                    <span>{item.count} × {item.name}</span>
                     <span className="font-mono font-medium text-white tabular-nums">
-                      €{pricing.discoLightsSubtotal.toFixed(2)}
+                      €{item.subtotal.toFixed(2)}
                     </span>
                   </div>
-                )}
-
-                {cart.powerbanksCount > 0 && (
-                  <div className="flex justify-between items-center">
-                    <span>{cart.powerbanksCount} × Powerbank</span>
-                    <span className="font-mono font-medium text-white tabular-nums">
-                      €{pricing.powerbanksSubtotal.toFixed(2)}
-                    </span>
-                  </div>
-                )}
+                ))}
 
                 <div className="flex justify-between items-center text-slate-400">
                   <span>Huurperiode</span>
@@ -644,15 +609,16 @@ export const CalculatorSection: React.FC = () => {
                   </div>
                 )}
 
-                <div className="flex justify-between items-center">
-                  <span>Bezorging & Retour</span>
-                  <span className="font-mono font-medium text-white tabular-nums">
-                    {pricing.shippingCost > 0 ? `€${pricing.shippingCost.toFixed(2)}` : 'Gratis ophalen'}
+                <div className="flex justify-between items-center text-emerald-400">
+                  <span className="flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5" />
+                    Zelf Ophalen in Uithoorn
                   </span>
+                  <span className="font-mono font-bold tabular-nums">Gratis (€0,00)</span>
                 </div>
 
                 <div className="flex justify-between items-center text-slate-400">
-                  <span>Borg (100% retour na inlevering)</span>
+                  <span>Borg (100% retour bij inlevering)</span>
                   <span className="font-mono tabular-nums">€{pricing.depositAmount.toFixed(2)}</span>
                 </div>
               </div>
@@ -661,14 +627,14 @@ export const CalculatorSection: React.FC = () => {
               <form onSubmit={handleApplyPromo} className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="Kortingscode (bijv. SILENT10)"
+                  placeholder="Kortingscode (bijv. UITHOORN10)"
                   value={promoInput}
                   onChange={(e) => setPromoInput(e.target.value)}
                   className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400 font-mono uppercase"
                 />
                 <button
                   type="submit"
-                  className="px-3 py-2 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors whitespace-nowrap shrink-0"
+                  className="px-3 py-2 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
                 >
                   Toepassen
                 </button>
@@ -678,7 +644,7 @@ export const CalculatorSection: React.FC = () => {
               <div className="p-3 bg-gradient-to-r from-cyan-950/40 to-indigo-950/40 border border-cyan-800/40 rounded-xl flex items-center justify-between">
                 <div>
                   <span className="text-[11px] text-cyan-300 font-semibold uppercase tracking-wider block">Kosten per persoon:</span>
-                  <span className="text-xs text-slate-300">Gebaseerd op {cart.headphonesCount} gasten</span>
+                  <span className="text-xs text-slate-300">Voor {cart.headphonesCount} personen</span>
                 </div>
                 <div className="text-lg font-extrabold text-cyan-400 font-mono tabular-nums">
                   €{pricing.pricePerPerson.toFixed(2)}{' '}
@@ -695,11 +661,11 @@ export const CalculatorSection: React.FC = () => {
                   </span>
                 </div>
                 <div className="flex justify-between text-[11px] text-slate-400">
-                  <span>Waarvan 21% BTW</span>
+                  <span>Inclusief 21% BTW</span>
                   <span className="font-mono tabular-nums">€{pricing.vatAmount.toFixed(2)}</span>
                 </div>
                 <div className="text-[11px] text-slate-500">
-                  * Inclusief €{pricing.depositAmount.toFixed(2)} borg (volledig teruggestort na inlevering)
+                  * Inclusief €{pricing.depositAmount.toFixed(2)} borg (retour bij inlevering in Uithoorn)
                 </div>
               </div>
 
@@ -709,13 +675,13 @@ export const CalculatorSection: React.FC = () => {
                 onClick={openBookingModal}
                 className="w-full py-4 text-center text-sm font-bold text-slate-950 bg-gradient-to-r from-cyan-400 via-emerald-400 to-cyan-300 hover:from-cyan-300 hover:to-emerald-300 rounded-xl shadow-lg shadow-cyan-500/20 active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
-                <span>Direct Reserveren</span>
+                <span>Direct Reserveren (Ophalen Uithoorn)</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 
               <div className="text-center">
                 <span className="text-[11px] text-slate-400">
-                  Vrijblijvende optie · Geen directe betaling verplicht
+                  Vrijblijvend reserveren · Betalen via iDEAL of bij afhalen
                 </span>
               </div>
 

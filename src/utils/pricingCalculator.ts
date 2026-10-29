@@ -1,10 +1,11 @@
-import { RentalCart, RentalSettings, DealOffer, PricingCalculation } from '../types/rental';
+import { RentalCart, RentalSettings, DealOffer, PricingCalculation, CustomProduct, CustomProductLineItem } from '../types/rental';
 import { VALID_PROMO_CODES } from '../data/defaultSettings';
 
 export function calculatePricing(
   cart: RentalCart,
   settings: RentalSettings,
-  offers: DealOffer[]
+  offers: DealOffer[],
+  customProducts: CustomProduct[] = []
 ): PricingCalculation {
   // If an active special offer is applied
   const appliedOffer = cart.appliedOfferId
@@ -25,17 +26,42 @@ export function calculatePricing(
   }
 
   const headphonesSubtotal = cart.headphonesCount * headphonesUnitPrice;
-  const transmittersSubtotal = cart.transmittersCount * settings.pricePerTransmitter;
-  const discoLightsSubtotal = cart.discoLightsCount * settings.pricePerDiscoLight;
-  const powerbanksSubtotal = cart.powerbanksCount * settings.pricePowerbank;
-  const cablesSubtotal = 0; // standard included with transmitters
+  
+  // 1 transmitter is standard included in headphone sets; additional transmitters (e.g. 2 or 3 channels) cost pricePerTransmitter
+  const extraTransmitters = Math.max(0, cart.transmittersCount - 1);
+  const transmittersSubtotal = extraTransmitters * settings.pricePerTransmitter;
+
+  // Custom products configured by admin
+  const customProductsBreakdown: CustomProductLineItem[] = [];
+  let customProductsSubtotal = 0;
+
+  if (cart.selectedProducts) {
+    for (const [prodId, count] of Object.entries(cart.selectedProducts)) {
+      if (count > 0) {
+        const prod = customProducts.find((p) => p.id === prodId && p.active);
+        if (prod) {
+          const itemSubtotal = count * prod.price;
+          customProductsSubtotal += itemSubtotal;
+          customProductsBreakdown.push({
+            id: prod.id,
+            name: prod.name,
+            count,
+            unitPrice: prod.price,
+            subtotal: itemSubtotal,
+          });
+        }
+      }
+    }
+  }
+
+  const cablesSubtotal = 0; // DJ/telefoon aansluitkabels altijd gratis meegeleverd
 
   // Duration multiplier:
   // 1 day = 1x
-  // 2 days = 1.6x
-  // 3+ days: if weekend deal, 1x or settings.weekendSurchargeMultiplier
+  // Weekend = settings.weekendSurchargeMultiplier (bijv. 1.0x actietarief)
+  // Multiday = 1 + (days - 1) * factor
   let durationMultiplier = 1;
-  if (cart.rentalDays === 1) {
+  if (cart.rentalDays <= 1) {
     durationMultiplier = 1;
   } else if (cart.isWeekend) {
     durationMultiplier = settings.weekendSurchargeMultiplier;
@@ -45,14 +71,13 @@ export function calculatePricing(
   }
 
   let rentalSubtotal =
-    (headphonesSubtotal + transmittersSubtotal + discoLightsSubtotal + powerbanksSubtotal + cablesSubtotal) *
+    (headphonesSubtotal + transmittersSubtotal + customProductsSubtotal + cablesSubtotal) *
     durationMultiplier;
 
   let discountAmount = 0;
   let appliedDiscountName = undefined;
 
   if (appliedOffer) {
-    // If it's a fixed package price offer
     const theoreticalRegularPrice = rentalSubtotal;
     if (appliedOffer.fixedPrice < theoreticalRegularPrice) {
       discountAmount = Math.max(0, theoreticalRegularPrice - appliedOffer.fixedPrice);
@@ -61,7 +86,7 @@ export function calculatePricing(
   }
 
   // Promo code discount
-  const cleanCode = cart.promoCode.trim().toUpperCase();
+  const cleanCode = (cart.promoCode || '').trim().toUpperCase();
   if (cleanCode && VALID_PROMO_CODES[cleanCode]) {
     const promo = VALID_PROMO_CODES[cleanCode];
     if (promo.discountPercent) {
@@ -81,13 +106,12 @@ export function calculatePricing(
   // Ensure discount doesn't exceed subtotal
   discountAmount = Math.min(rentalSubtotal, Math.round(discountAmount * 100) / 100);
 
-  const shippingCost = cart.deliveryType === 'delivery' ? settings.shippingCostRoundtrip : 0;
+  // Zelf ophalen in Uithoorn = €0,- verzendkosten
+  const shippingCost = 0;
   const depositAmount = settings.defaultDeposit;
 
   const subtotalExVat = Math.max(0, rentalSubtotal - discountAmount);
-  // VAT is included in standard Dutch retail consumer prices, so we display the 21% portion:
   const vatRate = settings.vatPercentage / 100;
-  // If price is incl VAT:
   const vatAmount = Math.round((subtotalExVat - subtotalExVat / (1 + vatRate)) * 100) / 100;
   const totalIncVat = Math.round((subtotalExVat + shippingCost + depositAmount) * 100) / 100;
 
@@ -102,8 +126,8 @@ export function calculatePricing(
     headphonesSubtotal,
     transmittersCount: cart.transmittersCount,
     transmittersSubtotal,
-    discoLightsSubtotal,
-    powerbanksSubtotal,
+    customProductsSubtotal,
+    customProductsBreakdown,
     cablesSubtotal,
     durationMultiplier,
     rentalSubtotal: Math.round(rentalSubtotal * 100) / 100,

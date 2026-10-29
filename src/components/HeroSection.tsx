@@ -1,6 +1,6 @@
 import React from 'react';
 import { useRental } from '../context/RentalContext';
-import { Sparkles, ArrowRight, ShieldCheck, Truck, VolumeX, Music } from 'lucide-react';
+import { Sparkles, ArrowRight, ShieldCheck, MapPin, VolumeX, Music } from 'lucide-react';
 import heroPartyImg from '../assets/images/hero_silent_disco_party_1793196647405.jpg';
 import brandLogo from '../assets/images/logo_silence_disco_uithoorn_1793259331317.jpg';
 
@@ -31,7 +31,7 @@ export const HeroSection: React.FC = () => {
               <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold text-cyan-300 tracking-wider uppercase">
                 <span>Silence Disco Verhuur Uithoorn</span>
                 <span aria-hidden="true" className="text-slate-600">·</span>
-                <span className="text-slate-400">Gratis Ophalen of PostNL Bezorging</span>
+                <span className="text-slate-400">Zelf Ophalen in Uithoorn & Omstreken</span>
               </div>
             </div>
 
@@ -43,7 +43,7 @@ export const HeroSection: React.FC = () => {
             </h1>
 
             <p className="text-base sm:text-lg text-slate-300 max-w-xl leading-relaxed mb-8">
-              Huur complete silent disco sets met switchbare 3-kanaals LED-koptelefoons voor verjaardagen, studentenfeesten, festivals of bruiloften. Feesten tot in de vroege uurtjes zónder burenklachten.
+              Huur complete silent disco sets met switchbare 3-kanaals LED-koptelefoons voor verjaardagen, tuinfeesten, sportclubs of verenigingen in Uithoorn en omstreken. Feesten tot in de vroege uurtjes zónder burenklachten.
             </p>
 
             {/* Hero CTAs */}
@@ -75,9 +75,9 @@ export const HeroSection: React.FC = () => {
               </div>
               <div className="flex items-center gap-2.5">
                 <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
-                  <Truck className="w-4 h-4" />
+                  <MapPin className="w-4 h-4" />
                 </div>
-                <span>Gratis retour via PostNL</span>
+                <span>Zelf Ophalen in Uithoorn</span>
               </div>
               <div className="flex items-center gap-2.5 col-span-2 sm:col-span-1">
                 <div className="w-7 h-7 rounded-lg bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400 shrink-0">

@@ -1,10 +1,10 @@
 import React from 'react';
 import { useRental } from '../context/RentalContext';
-import { Mail, Phone, MapPin, Truck, ShieldCheck } from 'lucide-react';
+import { Mail, Phone, MapPin, ShieldCheck, MessageSquare } from 'lucide-react';
 import brandLogo from '../assets/images/logo_silence_disco_uithoorn_1793259331317.jpg';
 
 export const Footer: React.FC = () => {
-  const { setActiveTab } = useRental();
+  const { setActiveTab, setIsChatDrawerOpen, settings } = useRental();
 
   return (
     <footer className="bg-slate-950 text-slate-400 border-t border-slate-800 text-xs">
@@ -31,11 +31,11 @@ export const Footer: React.FC = () => {
               </div>
             </div>
             <p className="text-slate-400 leading-relaxed text-xs">
-              Dé specialist in verhuur van professionele silent disco sets. Afhalen in Uithoorn (regio Amstelland) of gratis bezorgd & retour via PostNL.
+              Dé specialist in stille disco verhuur voor Uithoorn en directe omstreken. Zelf ophalen & retourneren op onze vaste locatie in Uithoorn.
             </p>
             <div className="flex items-center gap-2 text-emerald-400 text-[11px] font-medium pt-1">
               <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Geverifieerd verhuurbedrijf · KvK 84920194</span>
+              <span>Lokaal & Betrouwbaar in Uithoorn</span>
             </div>
           </div>
 
@@ -46,7 +46,7 @@ export const Footer: React.FC = () => {
               <li>
                 <button
                   onClick={() => setActiveTab('home')}
-                  className="hover:text-cyan-400 transition-colors"
+                  className="hover:text-cyan-400 transition-colors cursor-pointer"
                 >
                   Sets & Calculator
                 </button>
@@ -54,7 +54,7 @@ export const Footer: React.FC = () => {
               <li>
                 <button
                   onClick={() => setActiveTab('aanbiedingen')}
-                  className="hover:text-cyan-400 transition-colors"
+                  className="hover:text-cyan-400 transition-colors cursor-pointer"
                 >
                   Pakket Aanbiedingen
                 </button>
@@ -78,41 +78,46 @@ export const Footer: React.FC = () => {
               <li>
                 <button
                   onClick={() => setActiveTab('beheer')}
-                  className="hover:text-emerald-400 transition-colors"
+                  className="hover:text-emerald-400 transition-colors cursor-pointer"
                 >
-                  Prijzen & Voorraad Beheer
+                  Producten & Prijzen Beheren
                 </button>
               </li>
             </ul>
           </div>
 
-          {/* Bezorging & Service */}
+          {/* Ophalen & Service */}
           <div>
-            <h4 className="text-white font-semibold mb-3 font-display text-sm">Bezorging & Retour</h4>
+            <h4 className="text-white font-semibold mb-3 font-display text-sm">Zelf Ophalen & Retour</h4>
             <p className="text-slate-400 leading-relaxed text-xs mb-3">
-              Verzending door heel Nederland & België via PostNL. Inclusief gratis voorgedrukt retourlabel.
+              Geen verzending per post; wij bedienen uitsluitend Uithoorn, De Kwakel, Aalsmeer, Amstelveen en Mijdrecht.
             </p>
-            <div className="flex items-center gap-2 text-slate-300">
-              <Truck className="w-4 h-4 text-cyan-400" />
-              <span>Binnen 24 uur in huis</span>
+            <div className="flex items-center gap-2 text-emerald-300 font-semibold">
+              <MapPin className="w-4 h-4 text-pink-400 shrink-0" />
+              <span>{settings.pickupLocationAddress}</span>
             </div>
           </div>
 
-          {/* Contact & Support */}
+          {/* Contact & Live Chat */}
           <div>
             <h4 className="text-white font-semibold mb-3 font-display text-sm">Klantenservice</h4>
             <div className="space-y-2.5">
               <div className="flex items-center gap-2">
                 <Phone className="w-3.5 h-3.5 text-cyan-400" />
-                <span>020 - 820 49 10 (Ma-Za 09:00 - 21:00)</span>
+                <span>{settings.companyPhone}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Mail className="w-3.5 h-3.5 text-cyan-400" />
-                <span>info@silentgroove-verhuur.nl</span>
+                <span>{settings.companyEmail}</span>
               </div>
-              <div className="flex items-center gap-2">
-                <MapPin className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Afhaalpunten: Amsterdam · Utrecht · Eindhoven</span>
+              <div className="pt-2">
+                <button
+                  onClick={() => setIsChatDrawerOpen(true)}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-pink-950/40 border border-pink-500/40 text-pink-300 hover:text-white transition-colors cursor-pointer"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>Start Live Chat met Ons</span>
+                </button>
               </div>
             </div>
           </div>
@@ -122,14 +127,12 @@ export const Footer: React.FC = () => {
         {/* Bottom Bar */}
         <div className="pt-8 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between gap-4 text-slate-500 text-[11px]">
           <div>
-            © {new Date().getFullYear()} SilentGroove Silent Disco Verhuur. Alle rechten voorbehouden.
+            © {new Date().getFullYear()} {settings.companyName}. Alle rechten voorbehouden.
           </div>
           <div className="flex items-center gap-4">
-            <span className="hover:text-slate-300 cursor-pointer">Algemene Huurvoorwaarden</span>
+            <span className="text-slate-400">Regio Uithoorn en omstreken</span>
             <span aria-hidden="true">·</span>
-            <span className="hover:text-slate-300 cursor-pointer">Privacybeleid</span>
-            <span aria-hidden="true">·</span>
-            <span className="hover:text-slate-300 cursor-pointer">Borgbeleid</span>
+            <span>Altijd compleet met kabels</span>
           </div>
         </div>
       </div>

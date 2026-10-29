@@ -1,0 +1,115 @@
+{
+  "entities": {
+    "CustomProduct": {
+      "title": "CustomProduct",
+      "description": "Rental product or accessory configured by the business owner",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 500 },
+        "price": { "type": "number" },
+        "stock": { "type": "number" },
+        "active": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "name", "price", "stock", "active"]
+    },
+    "Conversation": {
+      "title": "Conversation",
+      "description": "A chat thread between a customer and the Silence Disco Uithoorn owner",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "customerId": { "type": "string" },
+        "customerName": { "type": "string", "maxLength": 100 },
+        "customerEmail": { "type": "string", "maxLength": 150 },
+        "lastMessage": { "type": "string", "maxLength": 1000 },
+        "lastSenderRole": { "type": "string", "enum": ["customer", "admin"] },
+        "lastMessageAt": { "type": "string" },
+        "unreadByAdmin": { "type": "number" },
+        "unreadByCustomer": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["customerId", "customerName", "customerEmail", "lastMessage", "lastSenderRole", "updatedAt"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "An individual chat message in a conversation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "conversationId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string", "maxLength": 100 },
+        "senderRole": { "type": "string", "enum": ["customer", "admin"] },
+        "text": { "type": "string", "maxLength": 1000, "minLength": 1 },
+        "createdAt": { "type": "string" },
+        "isRead": { "type": "boolean" }
+      },
+      "required": ["conversationId", "senderId", "senderName", "senderRole", "text", "createdAt"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile with role and contact info",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string", "maxLength": 100 },
+        "phone": { "type": "string", "maxLength": 30 },
+        "city": { "type": "string", "maxLength": 100 },
+        "role": { "type": "string", "enum": ["customer", "admin"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "Customer silent disco rental reservation for Uithoorn en omstreken",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "customerName": { "type": "string", "maxLength": 100 },
+        "customerEmail": { "type": "string", "maxLength": 150 },
+        "customerPhone": { "type": "string", "maxLength": 30 },
+        "city": { "type": "string", "maxLength": 100 },
+        "headphonesCount": { "type": "number" },
+        "transmittersCount": { "type": "number" },
+        "customProducts": { "type": "string" },
+        "startDate": { "type": "string" },
+        "eventDate": { "type": "string" },
+        "returnDate": { "type": "string" },
+        "totalPrice": { "type": "number" },
+        "status": { "type": "string", "enum": ["confirmed", "prepared", "shipped", "returned", "cancelled"] },
+        "deliveryMethod": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "customerName", "customerEmail", "headphonesCount", "startDate", "eventDate", "returnDate", "totalPrice", "status"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": "CustomProduct",
+      "description": "Custom extra products and accessories created by the admin"
+    },
+    "/conversations/{conversationId}": {
+      "schema": "Conversation",
+      "description": "Chat conversations between customers and admin"
+    },
+    "/conversations/{conversationId}/messages/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "Individual messages in a chat conversation"
+    },
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profiles with customer/admin roles"
+    },
+    "/bookings/{bookingId}": {
+      "schema": "Booking",
+      "description": "Rental bookings for Uithoorn en omstreken"
+    }
+  }
+}

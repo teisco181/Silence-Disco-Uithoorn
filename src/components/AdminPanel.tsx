@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useRental } from '../context/RentalContext';
-import { RentalSettings, DealOffer, TierPricing, BookingRecord, OrderStatus, PaymentStatus } from '../types/rental';
+import { RentalSettings, DealOffer, TierPricing, BookingRecord, OrderStatus, PaymentStatus, CustomProduct } from '../types/rental';
 import { formatDutchDate } from '../utils/availability';
 import {
   Settings,
@@ -11,7 +11,6 @@ import {
   Check,
   Tag,
   Headphones,
-  Radio,
   Sparkles,
   DollarSign,
   AlertCircle,
@@ -19,17 +18,16 @@ import {
   Sliders,
   Calendar,
   Package,
-  Truck,
   User,
-  Phone,
-  Mail,
   Clock,
   Filter,
   Edit2,
   X,
   MapPin,
   Building,
-  ShieldAlert,
+  MessageSquare,
+  Send,
+  CheckCheck,
 } from 'lucide-react';
 
 export const AdminPanel: React.FC = () => {
@@ -46,18 +44,39 @@ export const AdminPanel: React.FC = () => {
     updateBookingStatus,
     deleteBooking,
     addBooking,
+    customProducts,
+    addCustomProduct,
+    updateCustomProduct,
+    deleteCustomProduct,
+    adminConversations,
+    activeConversationId,
+    setActiveConversationId,
+    chatMessages,
+    handleSendMessage,
     setActiveTab,
     showToast,
   } = useRental();
 
   // Admin subtabs
-  const [adminSubTab, setAdminSubTab] = useState<'tarieven' | 'pakketten' | 'boekingen'>('tarieven');
+  const [adminSubTab, setAdminSubTab] = useState<'tarieven' | 'producten' | 'pakketten' | 'berichten' | 'boekingen'>('producten');
 
   // Local state for editable settings
   const [formSettings, setFormSettings] = useState<RentalSettings>({
     ...settings,
     tierPricing: settings.tierPricing.map((t) => ({ ...t })),
   });
+
+  // State for Custom Product creation/editing
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [productForm, setProductForm] = useState<CustomProduct>({
+    id: '',
+    name: '',
+    description: '',
+    price: 10,
+    stock: 5,
+    active: true,
+  });
+  const [isAddingProduct, setIsAddingProduct] = useState(false);
 
   // State for editing an existing offer or creating a new one
   const [editingOfferId, setEditingOfferId] = useState<string | null>(null);
@@ -70,19 +89,23 @@ export const AdminPanel: React.FC = () => {
     customerName: '',
     email: '',
     phone: '',
+    city: 'Uithoorn',
+    pickupTimeSlot: 'Vrijdag 16:00 uur',
     startDate: new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0],
     eventDate: new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0],
     returnDate: new Date(Date.now() + 86400000 * 5).toISOString().split('T')[0],
     headphonesCount: 25,
     transmittersCount: 2,
-    deliveryType: 'delivery' as 'delivery' | 'pickup',
     paymentStatus: 'paid' as PaymentStatus,
     paymentMethod: 'invoice' as const,
-    notes: 'Handmatig ingevoerd via beheer',
+    notes: 'Handmatig ingevoerd voor ophalen in Uithoorn',
   });
 
+  // Chat reply state
+  const [replyInput, setReplyInput] = useState('');
+
   // Booking search/filter
-  const [bookingFilter, setBookingFilter] = useState<'all' | 'confirmed' | 'prepared' | 'shipped' | 'returned'>('all');
+  const [bookingFilter, setBookingFilter] = useState<'all' | 'confirmed' | 'prepared' | 'ready_for_pickup' | 'returned'>('all');
 
   const filteredBookings = bookings.filter((b) => {
     if (bookingFilter === 'all') return true;
@@ -118,6 +141,39 @@ export const AdminPanel: React.FC = () => {
     setFormSettings({ ...formSettings, tierPricing: updatedTiers });
   };
 
+  // Product CRUD
+  const handleOpenNewProduct = () => {
+    setProductForm({
+      id: `prod_${Date.now()}`,
+      name: '',
+      description: '',
+      price: 12.50,
+      stock: 5,
+      active: true,
+    });
+    setEditingProductId(null);
+    setIsAddingProduct(true);
+  };
+
+  const handleOpenEditProduct = (prod: CustomProduct) => {
+    setProductForm({ ...prod });
+    setEditingProductId(prod.id);
+    setIsAddingProduct(true);
+  };
+
+  const handleSaveProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!productForm.name.trim()) return;
+
+    if (editingProductId) {
+      await updateCustomProduct(editingProductId, productForm);
+    } else {
+      await addCustomProduct(productForm);
+    }
+    setIsAddingProduct(false);
+    setEditingProductId(null);
+  };
+
   // Offer editing functions
   const handleOpenEditOffer = (offer: DealOffer) => {
     setEditingOfferId(offer.id);
@@ -129,24 +185,22 @@ export const AdminPanel: React.FC = () => {
     const newId = `offer-${Date.now()}`;
     const newObj: DealOffer = {
       id: newId,
-      title: 'Nieuw Voordeelpakket',
+      title: 'Nieuw Voordeelpakket Uithoorn',
       badge: 'Nieuwe Deal',
-      tagline: 'Complete silent disco set met voordeel',
+      tagline: 'Complete set inclusief zenders en ophalen in Uithoorn',
       headphonesCount: 30,
       transmittersCount: 2,
-      discoLightsCount: 1,
-      powerbanksCount: 0,
       includeDJCables: true,
       rentalDurationDays: 1,
       isWeekendDeal: false,
-      fixedPrice: 89,
-      originalPrice: 125,
-      description: 'Luxe samengestelde set inclusief benodigde kabels en snelle service.',
+      fixedPrice: 79,
+      originalPrice: 110,
+      description: 'Luxe samengestelde set inclusief alle benodigde kabels.',
       features: [
         '30 Silent disco RGB koptelefoons',
-        '2 Krachtige zenders',
-        '1 RGB Party discolamp',
-        'Gratis retour via PostNL',
+        '2 Zenders (Rood & Blauw kanaal)',
+        'Alle kabels voor iPhone, USB-C & laptop',
+        'Zelf ophalen in Uithoorn (geen verzendkosten)',
       ],
       active: true,
       popular: false,
@@ -192,7 +246,7 @@ export const AdminPanel: React.FC = () => {
     if (!manualBookingData.customerName || !manualBookingData.email) return;
 
     const baseCost = manualBookingData.headphonesCount * settings.basePricePerHeadphone;
-    const txCost = manualBookingData.transmittersCount * settings.pricePerTransmitter;
+    const txCost = Math.max(0, manualBookingData.transmittersCount - 1) * settings.pricePerTransmitter;
     const total = baseCost + txCost + settings.defaultDeposit;
 
     const booking: BookingRecord = {
@@ -201,11 +255,13 @@ export const AdminPanel: React.FC = () => {
       customerName: manualBookingData.customerName,
       email: manualBookingData.email,
       phone: manualBookingData.phone || '06 00000000',
+      city: manualBookingData.city || 'Uithoorn',
+      pickupTimeSlot: manualBookingData.pickupTimeSlot,
       startDate: manualBookingData.startDate,
       eventDate: manualBookingData.eventDate,
       returnDate: manualBookingData.returnDate,
       rentalDays: 3,
-      deliveryType: manualBookingData.deliveryType,
+      deliveryType: 'pickup',
       notes: manualBookingData.notes,
       cart: {
         headphonesCount: manualBookingData.headphonesCount,
@@ -215,10 +271,9 @@ export const AdminPanel: React.FC = () => {
         returnDate: manualBookingData.returnDate,
         rentalDays: 3,
         isWeekend: true,
-        discoLightsCount: 0,
-        powerbanksCount: 0,
+        selectedProducts: {},
         includeDJCables: true,
-        deliveryType: manualBookingData.deliveryType,
+        deliveryType: 'pickup',
         appliedOfferId: null,
         promoCode: '',
       },
@@ -228,13 +283,13 @@ export const AdminPanel: React.FC = () => {
         headphonesSubtotal: baseCost,
         transmittersCount: manualBookingData.transmittersCount,
         transmittersSubtotal: txCost,
-        discoLightsSubtotal: 0,
-        powerbanksSubtotal: 0,
+        customProductsSubtotal: 0,
+        customProductsBreakdown: [],
         cablesSubtotal: 0,
         durationMultiplier: 1.0,
         rentalSubtotal: baseCost + txCost,
         discountAmount: 0,
-        shippingCost: manualBookingData.deliveryType === 'delivery' ? settings.shippingCostRoundtrip : 0,
+        shippingCost: 0,
         depositAmount: settings.defaultDeposit,
         subtotalExVat: baseCost + txCost,
         vatAmount: (baseCost + txCost) * 0.21,
@@ -249,8 +304,17 @@ export const AdminPanel: React.FC = () => {
 
     addBooking(booking);
     setIsAddingManualBooking(false);
-    showToast('Handmatige boeking succesvol geregistreerd!');
+    showToast('Handmatige boeking in Uithoorn geregistreerd!');
   };
+
+  const handleSendAdminReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!replyInput.trim() || !activeConversationId) return;
+    await handleSendMessage(replyInput.trim(), activeConversationId);
+    setReplyInput('');
+  };
+
+  const activeConv = adminConversations.find((c) => c.id === activeConversationId) || adminConversations[0];
 
   return (
     <div className="py-12 sm:py-16 bg-slate-950 text-slate-100 min-h-[calc(100vh-80px)]">
@@ -261,13 +325,13 @@ export const AdminPanel: React.FC = () => {
           <div>
             <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400 tracking-wider uppercase mb-1">
               <Settings className="w-4 h-4" />
-              <span>Volledig Beheer & Configuratie</span>
+              <span>Beheerderspaneel · Silence Disco Verhuur Uithoorn</span>
             </div>
             <h1 className="text-3xl sm:text-4xl font-extrabold text-white font-display">
-              Silence Disco Beheerpaneel
+              Beheer & Instellingen
             </h1>
             <p className="text-sm text-slate-400 mt-1">
-              Beheer alle prijzen, volumestaffels, pakketten, minimale & maximale huurdagen en reserveringen.
+              Beheer je eigen extra producten, voorraad, prijzen, klantberichten en lokale reserveringen in Uithoorn en omstreken.
             </p>
           </div>
 
@@ -284,13 +348,25 @@ export const AdminPanel: React.FC = () => {
               className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-rose-400 bg-rose-950/40 hover:bg-rose-900/40 border border-rose-800/60 rounded-xl transition-colors cursor-pointer"
             >
               <RotateCcw className="w-4 h-4" />
-              <span>Herstel Fabrieksinstellingen</span>
+              <span>Reset Tarieven</span>
             </button>
           </div>
         </div>
 
         {/* Sub-navigation tabs */}
         <div className="flex items-center gap-2 pb-6 border-b border-slate-800/80 mb-8 overflow-x-auto">
+          <button
+            onClick={() => setAdminSubTab('producten')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+              adminSubTab === 'producten'
+                ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
+                : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'
+            }`}
+          >
+            <Package className="w-4 h-4" />
+            <span>Producten & Extra's ({customProducts.length})</span>
+          </button>
+
           <button
             onClick={() => setAdminSubTab('tarieven')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
@@ -300,7 +376,7 @@ export const AdminPanel: React.FC = () => {
             }`}
           >
             <DollarSign className="w-4 h-4" />
-            <span>Prijzen, Dagen & Limieten</span>
+            <span>Prijzen, Staffels & Uithoorn Dagen</span>
           </button>
 
           <button
@@ -311,29 +387,270 @@ export const AdminPanel: React.FC = () => {
                 : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'
             }`}
           >
-            <Package className="w-4 h-4" />
+            <Tag className="w-4 h-4" />
             <span>Pakketten & Aanbiedingen ({offers.length})</span>
+          </button>
+
+          <button
+            onClick={() => setAdminSubTab('berichten')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+              adminSubTab === 'berichten'
+                ? 'bg-pink-500 text-white shadow-md shadow-pink-500/20'
+                : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'
+            }`}
+          >
+            <MessageSquare className="w-4 h-4" />
+            <span>Klantenservice Chat ({adminConversations.length})</span>
           </button>
 
           <button
             onClick={() => setAdminSubTab('boekingen')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
               adminSubTab === 'boekingen'
-                ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
+                ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/20'
                 : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'
             }`}
           >
             <Calendar className="w-4 h-4" />
-            <span>Boekingen & Beschikbaarheid ({bookings.length})</span>
+            <span>Boekingen & Reserveringen ({bookings.length})</span>
           </button>
         </div>
 
         {/* ============================================================
-            SUB-TAB 1: PRIJZEN, DAGEN & LIMIETEN
+            SUB-TAB: PRODUCTEN & EXTRA'S BEHEREN (NIEUW MENU!)
+           ============================================================ */}
+        {adminSubTab === 'producten' && (
+          <div className="space-y-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 bg-slate-900 rounded-3xl border border-slate-800">
+              <div>
+                <div className="flex items-center gap-2 text-xs font-semibold text-cyan-400 uppercase tracking-wider mb-1">
+                  <span>Producten Menu</span>
+                  <span aria-hidden="true">·</span>
+                  <span>Op Maat voor Uithoorn</span>
+                </div>
+                <h2 className="text-xl font-bold text-white font-display">
+                  Eigen Producten & Extra's Toevoegen
+                </h2>
+                <p className="text-xs text-slate-400 mt-1 max-w-2xl">
+                  Hier beheer je alle losse artikelen die je verhuurt. Producten die je niet hebt (zoals discolampen of outdoor powerbanks) zijn verwijderd. Voeg hier zelf toe wat je wél aanbiedt met je eigen prijs en beschikbare voorraad!
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleOpenNewProduct}
+                className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-slate-950 bg-cyan-400 hover:bg-cyan-300 rounded-xl transition-all cursor-pointer shrink-0 shadow-lg shadow-cyan-500/20"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Nieuw Product Toevoegen</span>
+              </button>
+            </div>
+
+            {/* Modal / Form to add or edit product */}
+            {isAddingProduct && (
+              <div className="p-6 sm:p-8 bg-slate-900 rounded-3xl border-2 border-cyan-500/70 shadow-2xl space-y-6">
+                <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <Package className="w-5 h-5 text-cyan-400" />
+                    <h3 className="text-lg font-bold text-white font-display">
+                      {editingProductId ? 'Product Bewerken' : 'Nieuw Product Toevoegen'}
+                    </h3>
+                  </div>
+                  <button
+                    onClick={() => setIsAddingProduct(false)}
+                    className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleSaveProduct} className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                    <div className="sm:col-span-2">
+                      <label className="block text-slate-300 font-semibold mb-1">
+                        Productnaam * (bijv. Draadloze Microfoon, Rookmachine, DJ Kabelset)
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={productForm.name}
+                        onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
+                        placeholder="bijv. Draadloze Vaste Microfoon"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-400"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">
+                        Huurprijs (€ per periode) *
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-2 text-slate-400">€</span>
+                        <input
+                          type="number"
+                          step="0.50"
+                          min="0"
+                          required
+                          value={productForm.price}
+                          onChange={(e) =>
+                            setProductForm({ ...productForm, price: parseFloat(e.target.value) || 0 })
+                          }
+                          className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-7 pr-3 py-2 text-white font-mono focus:outline-none focus:border-cyan-400"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">
+                        Beschikbare Voorraad (stuks) *
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        required
+                        value={productForm.stock}
+                        onChange={(e) =>
+                          setProductForm({ ...productForm, stock: parseInt(e.target.value) || 0 })
+                        }
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-cyan-400"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-3">
+                      <label className="block text-slate-300 font-semibold mb-1">
+                        Korte Beschrijving / Toelichting voor de klant
+                      </label>
+                      <input
+                        type="text"
+                        value={productForm.description}
+                        onChange={(e) =>
+                          setProductForm({ ...productForm, description: e.target.value })
+                        }
+                        placeholder="bijv. Handig voor toespraken of karaoke via de zender"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-400"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-5">
+                      <label className="flex items-center gap-2 cursor-pointer text-slate-300 font-semibold">
+                        <input
+                          type="checkbox"
+                          checked={productForm.active}
+                          onChange={(e) =>
+                            setProductForm({ ...productForm, active: e.target.checked })
+                          }
+                          className="w-4 h-4 rounded text-cyan-500 bg-slate-950 border-slate-700 focus:ring-0"
+                        />
+                        <span>Zichtbaar in calculator</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingProduct(false)}
+                      className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white bg-slate-800 rounded-xl cursor-pointer"
+                    >
+                      Annuleren
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex items-center gap-2 px-6 py-2 text-xs font-bold text-slate-950 bg-cyan-400 hover:bg-cyan-300 rounded-xl cursor-pointer"
+                    >
+                      <Save className="w-4 h-4" />
+                      <span>Product Opslaan</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* List of custom products */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {customProducts.length === 0 ? (
+                <div className="col-span-full p-12 text-center bg-slate-900 rounded-3xl border border-slate-800">
+                  <Package className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+                  <h3 className="text-base font-bold text-white mb-1">
+                    Geen extra producten geconfigureerd
+                  </h3>
+                  <p className="text-xs text-slate-400 max-w-md mx-auto mb-5">
+                    De oude discolampen en outdoor powerbanks zijn verwijderd omdat je deze niet hebt. Klik op "Nieuw Product Toevoegen" om jouw eigen apparatuur toe te voegen!
+                  </p>
+                  <button
+                    onClick={handleOpenNewProduct}
+                    className="px-4 py-2 text-xs font-bold text-slate-950 bg-cyan-400 hover:bg-cyan-300 rounded-xl cursor-pointer"
+                  >
+                    + Voeg je eerste product toe
+                  </button>
+                </div>
+              ) : (
+                customProducts.map((prod) => (
+                  <div
+                    key={prod.id}
+                    className={`p-5 rounded-2xl border transition-all ${
+                      prod.active
+                        ? 'bg-slate-900 border-slate-800'
+                        : 'bg-slate-900/50 border-slate-800/60 opacity-60'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div>
+                        <span
+                          className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider mb-2 ${
+                            prod.active
+                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                              : 'bg-slate-800 text-slate-400'
+                          }`}
+                        >
+                          {prod.active ? 'Actief in winkel' : 'Verborgen'}
+                        </span>
+                        <h4 className="text-base font-bold text-white">{prod.name}</h4>
+                        {prod.description && (
+                          <p className="text-xs text-slate-400 mt-0.5">{prod.description}</p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => handleOpenEditProduct(prod)}
+                          className="p-1.5 text-slate-400 hover:text-cyan-400 rounded-lg hover:bg-slate-800 cursor-pointer"
+                          title="Bewerken"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => deleteCustomProduct(prod.id)}
+                          className="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-800 cursor-pointer"
+                          title="Verwijderen"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs font-mono">
+                      <div>
+                        <span className="text-slate-500 block text-[10px]">Huurprijs</span>
+                        <span className="font-bold text-cyan-300 text-sm">€{prod.price.toFixed(2)}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-slate-500 block text-[10px]">Beschikbaar</span>
+                        <span className="font-bold text-white text-sm">{prod.stock} stuks</span>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================
+            SUB-TAB: TARIEVEN & DAGEN (ZELF OPHALEN UITHOORN FOCUS)
            ============================================================ */}
         {adminSubTab === 'tarieven' && (
           <form onSubmit={handleSaveSettings} className="space-y-10">
-            
             {/* Card 1: Dagen & Huurbeperkingen */}
             <div className="p-6 sm:p-8 bg-slate-900 rounded-3xl border border-slate-800 shadow-xl">
               <div className="flex items-center gap-2.5 mb-6 pb-4 border-b border-slate-800">
@@ -343,14 +660,12 @@ export const AdminPanel: React.FC = () => {
                     Huurduur, Maximale Dagen & Toeslagfactoren
                   </h2>
                   <p className="text-xs text-slate-400">
-                    Stel hier in hoeveel dagen klanten maximaal kunnen huren en hoe meerdagentarieven berekend worden.
+                    Stel in hoeveel dagen klanten maximaal kunnen huren voor ophalen & retourneren in Uithoorn.
                   </p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                
-                {/* Max Days */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-2">
                     Maximaal Aantal Huurdagen
@@ -371,12 +686,8 @@ export const AdminPanel: React.FC = () => {
                     />
                     <span className="absolute right-3.5 top-2.5 text-xs text-slate-500">dagen</span>
                   </div>
-                  <span className="text-[11px] text-slate-500 mt-1 block">
-                    Bovengrens voor de huurcalculator
-                  </span>
                 </div>
 
-                {/* Min Days */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-2">
                     Minimaal Aantal Huurdagen
@@ -397,15 +708,11 @@ export const AdminPanel: React.FC = () => {
                     />
                     <span className="absolute right-3.5 top-2.5 text-xs text-slate-500">dagen</span>
                   </div>
-                  <span className="text-[11px] text-slate-500 mt-1 block">
-                    Standaard 1 feestdag
-                  </span>
                 </div>
 
-                {/* Weekend Surcharge Multiplier */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-2">
-                    Weekend Factor (1.0 = 3 Dagen voor 1 Dag)
+                    Weekend Factor (1.0 = Weekend Voordeel)
                   </label>
                   <div className="relative">
                     <input
@@ -424,12 +731,8 @@ export const AdminPanel: React.FC = () => {
                     />
                     <span className="absolute right-3.5 top-2.5 text-xs text-slate-500">× tarief</span>
                   </div>
-                  <span className="text-[11px] text-slate-500 mt-1 block">
-                    1.0 = geen meerkosten voor weekend
-                  </span>
                 </div>
 
-                {/* Extra day factor */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-2">
                     Toeslag per Extra Huurdag Factor
@@ -451,11 +754,7 @@ export const AdminPanel: React.FC = () => {
                     />
                     <span className="absolute right-3.5 top-2.5 text-xs text-slate-500">× dag</span>
                   </div>
-                  <span className="text-[11px] text-slate-500 mt-1 block">
-                    0.50 = +50% per extra dag na dag 1
-                  </span>
                 </div>
-
               </div>
             </div>
 
@@ -464,16 +763,14 @@ export const AdminPanel: React.FC = () => {
               <div className="flex items-center gap-2.5 mb-6 pb-4 border-b border-slate-800">
                 <Headphones className="w-5 h-5 text-cyan-400" />
                 <h2 className="text-xl font-bold text-white font-display">
-                  Voorraad & Alle Basisprijzen
+                  Voorraad & Basistarieven in Uithoorn
                 </h2>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                
-                {/* Total Stock */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-2">
-                    Totale Magazijnvoorraad
+                    Totale Magazijnvoorraad Koptelefoons
                   </label>
                   <div className="relative">
                     <input
@@ -493,7 +790,6 @@ export const AdminPanel: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Max Headphones per order */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-2">
                     Max. Koptelefoons per Bestelling
@@ -516,30 +812,6 @@ export const AdminPanel: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Min Headphones */}
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-2">
-                    Min. Koptelefoons per Bestelling
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      min="1"
-                      max="100"
-                      value={formSettings.minHeadphones}
-                      onChange={(e) =>
-                        setFormSettings({
-                          ...formSettings,
-                          minHeadphones: parseInt(e.target.value) || 5,
-                        })
-                      }
-                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white font-mono text-sm focus:outline-none focus:border-cyan-400"
-                    />
-                    <span className="absolute right-3.5 top-2.5 text-xs text-slate-500">stuks</span>
-                  </div>
-                </div>
-
-                {/* Base price per headphone */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-2">
                     Basisprijs per Koptelefoon (€/dag)
@@ -562,10 +834,9 @@ export const AdminPanel: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Transmitter Price */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-2">
-                    Prijs per Zender (€)
+                    Prijs Extra Zender (€/kanaal)
                   </label>
                   <div className="relative">
                     <span className="absolute left-3.5 top-2.5 text-xs text-slate-400">€</span>
@@ -585,76 +856,6 @@ export const AdminPanel: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Disco light price */}
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-2">
-                    Prijs per Discolamp (€)
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3.5 top-2.5 text-xs text-slate-400">€</span>
-                    <input
-                      type="number"
-                      step="0.50"
-                      min="0"
-                      value={formSettings.pricePerDiscoLight}
-                      onChange={(e) =>
-                        setFormSettings({
-                          ...formSettings,
-                          pricePerDiscoLight: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-8 pr-4 py-2.5 text-white font-mono text-sm focus:outline-none focus:border-cyan-400"
-                    />
-                  </div>
-                </div>
-
-                {/* Powerbank price */}
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-2">
-                    Prijs per Outdoor Powerbank (€)
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3.5 top-2.5 text-xs text-slate-400">€</span>
-                    <input
-                      type="number"
-                      step="0.50"
-                      min="0"
-                      value={formSettings.pricePowerbank}
-                      onChange={(e) =>
-                        setFormSettings({
-                          ...formSettings,
-                          pricePowerbank: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-8 pr-4 py-2.5 text-white font-mono text-sm focus:outline-none focus:border-cyan-400"
-                    />
-                  </div>
-                </div>
-
-                {/* Shipping cost */}
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-2">
-                    PostNL Heen & Retour (€)
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3.5 top-2.5 text-xs text-slate-400">€</span>
-                    <input
-                      type="number"
-                      step="0.05"
-                      min="0"
-                      value={formSettings.shippingCostRoundtrip}
-                      onChange={(e) =>
-                        setFormSettings({
-                          ...formSettings,
-                          shippingCostRoundtrip: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-8 pr-4 py-2.5 text-white font-mono text-sm focus:outline-none focus:border-cyan-400"
-                    />
-                  </div>
-                </div>
-
-                {/* Deposit */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-2">
                     Standaard Borgbedrag (€)
@@ -677,7 +878,6 @@ export const AdminPanel: React.FC = () => {
                   </div>
                 </div>
 
-                {/* BTW percentage */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-2">
                     BTW Tarief (%)
@@ -700,6 +900,14 @@ export const AdminPanel: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Pickup highlight */}
+                <div className="sm:col-span-2 p-3.5 bg-emerald-950/30 rounded-xl border border-emerald-500/40 text-xs text-emerald-300 flex items-center gap-3">
+                  <MapPin className="w-5 h-5 shrink-0 text-emerald-400" />
+                  <div>
+                    <span className="font-bold block text-white">Geen PostNL verzending actief</span>
+                    <span>Klanten halen altijd gratis zelf op in Uithoorn en omstreken.</span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -710,10 +918,10 @@ export const AdminPanel: React.FC = () => {
                   <Tag className="w-5 h-5 text-indigo-400" />
                   <div>
                     <h2 className="text-xl font-bold text-white font-display">
-                      Volumekorting Staffels (Per Koptelefoon)
+                      Staffelkortingen per Koptelefoon
                     </h2>
                     <p className="text-xs text-slate-400">
-                      Stel staffels in waarbij de stuksprijs daalt naarmate de klant meer koptelefoons huurt.
+                      Prijs per koptelefoon daalt automatisch bij grotere groepen.
                     </p>
                   </div>
                 </div>
@@ -721,7 +929,7 @@ export const AdminPanel: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleAddTier}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-cyan-300 bg-cyan-950/60 border border-cyan-800/60 rounded-lg hover:bg-cyan-900/60 transition-colors self-start sm:self-auto cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-cyan-300 bg-cyan-950/60 border border-cyan-800/60 rounded-lg hover:bg-cyan-900/60 transition-colors cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Nieuwe Staffel Toevoegen</span>
@@ -735,7 +943,7 @@ export const AdminPanel: React.FC = () => {
                     className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center p-3.5 bg-slate-950 rounded-xl border border-slate-800"
                   >
                     <div className="sm:col-span-4">
-                      <label className="text-[11px] text-slate-500 block mb-1">Label / Omschrijving</label>
+                      <label className="text-[11px] text-slate-500 block mb-1">Label</label>
                       <input
                         type="text"
                         value={tier.label}
@@ -758,7 +966,7 @@ export const AdminPanel: React.FC = () => {
                     </div>
 
                     <div className="sm:col-span-2">
-                      <label className="text-[11px] text-slate-500 block mb-1">Tot (leeg = onbeperkt)</label>
+                      <label className="text-[11px] text-slate-500 block mb-1">Tot (leeg = ∞)</label>
                       <input
                         type="number"
                         min="1"
@@ -776,7 +984,7 @@ export const AdminPanel: React.FC = () => {
                     </div>
 
                     <div className="sm:col-span-3">
-                      <label className="text-[11px] text-slate-500 block mb-1">Prijs per koptelefoon (€)</label>
+                      <label className="text-[11px] text-slate-500 block mb-1">Prijs per stuk (€)</label>
                       <div className="relative">
                         <span className="absolute left-2.5 top-1.5 text-xs text-slate-400">€</span>
                         <input
@@ -801,73 +1009,12 @@ export const AdminPanel: React.FC = () => {
                         type="button"
                         onClick={() => handleRemoveTier(index)}
                         className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
-                        title="Verwijder staffel"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
                 ))}
-              </div>
-            </div>
-
-            {/* Card 4: Bedrijfs- & Afhaallocatie Info */}
-            <div className="p-6 sm:p-8 bg-slate-900 rounded-3xl border border-slate-800 shadow-xl">
-              <div className="flex items-center gap-2.5 mb-6 pb-4 border-b border-slate-800">
-                <Building className="w-5 h-5 text-amber-400" />
-                <h2 className="text-xl font-bold text-white font-display">
-                  Bedrijfsgegevens & Afhaallocatie
-                </h2>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-2">
-                    Bedrijfsnaam / Merk
-                  </label>
-                  <input
-                    type="text"
-                    value={formSettings.companyName}
-                    onChange={(e) => setFormSettings({ ...formSettings, companyName: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-xs focus:outline-none focus:border-cyan-400"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-2">
-                    E-mailadres Klantenservice
-                  </label>
-                  <input
-                    type="email"
-                    value={formSettings.companyEmail}
-                    onChange={(e) => setFormSettings({ ...formSettings, companyEmail: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-xs focus:outline-none focus:border-cyan-400"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-2">
-                    Telefoonnummer
-                  </label>
-                  <input
-                    type="text"
-                    value={formSettings.companyPhone}
-                    onChange={(e) => setFormSettings({ ...formSettings, companyPhone: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-xs focus:outline-none focus:border-cyan-400"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-2">
-                    Afhaallocatie Adres (Uithoorn)
-                  </label>
-                  <input
-                    type="text"
-                    value={formSettings.pickupLocationAddress}
-                    onChange={(e) => setFormSettings({ ...formSettings, pickupLocationAddress: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-xs focus:outline-none focus:border-cyan-400"
-                  />
-                </div>
               </div>
             </div>
 
@@ -878,15 +1025,147 @@ export const AdminPanel: React.FC = () => {
                 className="flex items-center gap-2 px-8 py-3.5 text-sm font-bold text-slate-950 bg-gradient-to-r from-emerald-400 to-cyan-400 hover:from-emerald-300 hover:to-cyan-300 rounded-xl shadow-lg shadow-emerald-500/20 active:scale-95 transition-all cursor-pointer"
               >
                 <Save className="w-4 h-4" />
-                <span>Alle Prijzen & Instellingen Opslaan</span>
+                <span>Instellingen & Tarieven Opslaan</span>
               </button>
             </div>
-
           </form>
         )}
 
         {/* ============================================================
-            SUB-TAB 2: PAKKETTEN & AANBIEDINGEN (VOLLEDIGE EDITOR)
+            SUB-TAB: KLANTENSERVICE CHAT (2-WEG LIVE COMMUNICATIE)
+           ============================================================ */}
+        {adminSubTab === 'berichten' && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 bg-slate-900 rounded-3xl border border-slate-800 p-6 min-h-[550px]">
+            {/* Conversation sidebar */}
+            <div className="lg:col-span-4 border-r border-slate-800 pr-4 space-y-3">
+              <div className="pb-3 border-b border-slate-800">
+                <h3 className="font-bold text-white text-base">Inkomende Klantberichten</h3>
+                <p className="text-xs text-slate-400">Directe chatvragen van klanten in Uithoorn</p>
+              </div>
+
+              {adminConversations.length === 0 ? (
+                <div className="p-8 text-center text-xs text-slate-500">
+                  <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-40 text-pink-400" />
+                  Nog geen actieve chatgesprekken. Zodra een klant via de website chat, verschijnt het gesprek hier live!
+                </div>
+              ) : (
+                <div className="space-y-2 overflow-y-auto max-h-[460px]">
+                  {adminConversations.map((conv) => {
+                    const isSelected = (activeConversationId || adminConversations[0]?.id) === conv.id;
+                    return (
+                      <button
+                        key={conv.id}
+                        onClick={() => setActiveConversationId(conv.id)}
+                        className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-slate-950 border-pink-500/80 shadow-md'
+                            : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-bold text-sm text-white truncate">
+                            {conv.customerName || 'Klant'}
+                          </span>
+                          {conv.unreadByAdmin > 0 && (
+                            <span className="px-1.5 py-0.5 rounded-full bg-pink-500 text-white text-[10px] font-bold">
+                              {conv.unreadByAdmin} nieuw
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-400 truncate">{conv.lastMessage || 'Geen tekst'}</p>
+                        <span className="text-[10px] text-slate-500 mt-1 block font-mono">
+                          {conv.customerEmail}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Conversation Chat Window */}
+            <div className="lg:col-span-8 flex flex-col justify-between pl-2">
+              {activeConv ? (
+                <>
+                  {/* Chat header */}
+                  <div className="pb-3 border-b border-slate-800 flex items-center justify-between">
+                    <div>
+                      <h4 className="font-bold text-white text-base flex items-center gap-2">
+                        <span>{activeConv.customerName}</span>
+                        <span className="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">
+                          {activeConv.customerEmail}
+                        </span>
+                      </h4>
+                      <p className="text-xs text-slate-400">Klant uit regio Uithoorn en omstreken</p>
+                    </div>
+                  </div>
+
+                  {/* Messages list */}
+                  <div className="py-4 space-y-3 overflow-y-auto max-h-[380px] min-h-[300px]">
+                    {chatMessages.length === 0 ? (
+                      <div className="text-center text-xs text-slate-500 py-12">
+                        Geen eerdere berichten in dit gesprek. Stuur hieronder een antwoord.
+                      </div>
+                    ) : (
+                      chatMessages.map((msg) => {
+                        const isAdminMsg = msg.senderRole === 'admin';
+                        return (
+                          <div
+                            key={msg.id}
+                            className={`flex flex-col ${isAdminMsg ? 'items-end' : 'items-start'}`}
+                          >
+                            <span className="text-[10px] text-slate-500 mb-0.5">
+                              {isAdminMsg ? 'Jij (Silence Disco Uithoorn)' : msg.senderName}
+                            </span>
+                            <div
+                              className={`max-w-[75%] p-3 rounded-2xl text-xs ${
+                                isAdminMsg
+                                  ? 'bg-gradient-to-r from-pink-600 to-purple-600 text-white rounded-tr-none'
+                                  : 'bg-slate-800 text-slate-100 rounded-tl-none border border-slate-700'
+                              }`}
+                            >
+                              <p className="whitespace-pre-wrap">{msg.text}</p>
+                              <span className="text-[9px] opacity-70 mt-1 block text-right font-mono">
+                                {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  {/* Reply Input Form */}
+                  <form onSubmit={handleSendAdminReply} className="pt-3 border-t border-slate-800 flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Typ een antwoord naar de klant..."
+                      value={replyInput}
+                      onChange={(e) => setReplyInput(e.target.value)}
+                      className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-pink-500"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!replyInput.trim()}
+                      className="px-5 py-2.5 bg-pink-500 hover:bg-pink-400 disabled:opacity-30 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Versturen</span>
+                    </button>
+                  </form>
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-center text-xs text-slate-500 py-16">
+                  <MessageSquare className="w-10 h-10 text-slate-600 mb-2" />
+                  Selecteer een gesprek aan de linkerkant om berichten te lezen en te beantwoorden.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================
+            SUB-TAB: PAKKETTEN & AANBIEDINGEN
            ============================================================ */}
         {adminSubTab === 'pakketten' && (
           <div className="space-y-8">
@@ -896,7 +1175,7 @@ export const AdminPanel: React.FC = () => {
                   Pakketten & Aanbiedingen Beheren
                 </h2>
                 <p className="text-xs text-slate-400 mt-1">
-                  Pas prijzen, koptelefoon-aantallen, huurdagen, teksten en inbegrepen opties van elk pakket aan.
+                  Pas pakketprijzen, aantallen koptelefoons, huurdagen en teksten aan.
                 </p>
               </div>
 
@@ -919,7 +1198,7 @@ export const AdminPanel: React.FC = () => {
               </div>
             </div>
 
-            {/* Modal / Inline Editor for creating or editing an offer */}
+            {/* Offer editor */}
             {offerFormData && (
               <div className="p-6 sm:p-8 bg-slate-900 rounded-3xl border-2 border-amber-500/60 shadow-2xl space-y-6">
                 <div className="flex items-center justify-between pb-4 border-b border-slate-800">
@@ -934,18 +1213,16 @@ export const AdminPanel: React.FC = () => {
                       setOfferFormData(null);
                       setEditingOfferId(null);
                     }}
-                    className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
+                    className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 cursor-pointer"
                   >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
 
-                <form onSubmit={handleSaveOffer} className="space-y-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
-                    
-                    {/* Title */}
+                <form onSubmit={handleSaveOffer} className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
                     <div>
-                      <label className="block text-slate-300 font-semibold mb-1">Titel van het Pakket *</label>
+                      <label className="block text-slate-300 font-semibold mb-1">Titel van Pakket *</label>
                       <input
                         type="text"
                         required
@@ -955,9 +1232,8 @@ export const AdminPanel: React.FC = () => {
                       />
                     </div>
 
-                    {/* Badge */}
                     <div>
-                      <label className="block text-slate-300 font-semibold mb-1">Badge Label</label>
+                      <label className="block text-slate-300 font-semibold mb-1">Badge</label>
                       <input
                         type="text"
                         value={offerFormData.badge}
@@ -966,8 +1242,52 @@ export const AdminPanel: React.FC = () => {
                       />
                     </div>
 
-                    {/* Tagline */}
                     <div>
+                      <label className="block text-slate-300 font-semibold mb-1">Actieprijs (€)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={offerFormData.fixedPrice}
+                        onChange={(e) => setOfferFormData({ ...offerFormData, fixedPrice: parseFloat(e.target.value) || 0 })}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">Normale Prijs (€)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={offerFormData.originalPrice}
+                        onChange={(e) => setOfferFormData({ ...offerFormData, originalPrice: parseFloat(e.target.value) || 0 })}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">Aantal Koptelefoons</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={offerFormData.headphonesCount}
+                        onChange={(e) => setOfferFormData({ ...offerFormData, headphonesCount: parseInt(e.target.value) || 1 })}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">Aantal Zenders</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="3"
+                        value={offerFormData.transmittersCount}
+                        onChange={(e) => setOfferFormData({ ...offerFormData, transmittersCount: parseInt(e.target.value) || 1 })}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2">
                       <label className="block text-slate-300 font-semibold mb-1">Korte Slagzin (Tagline)</label>
                       <input
                         type="text"
@@ -976,537 +1296,233 @@ export const AdminPanel: React.FC = () => {
                         className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
                       />
                     </div>
-
-                    {/* Headphones count */}
-                    <div>
-                      <label className="block text-slate-300 font-semibold mb-1">Aantal Koptelefoons</label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={offerFormData.headphonesCount}
-                        onChange={(e) =>
-                          setOfferFormData({
-                            ...offerFormData,
-                            headphonesCount: parseInt(e.target.value) || 1,
-                          })
-                        }
-                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
-                      />
-                    </div>
-
-                    {/* Transmitters count */}
-                    <div>
-                      <label className="block text-slate-300 font-semibold mb-1">Aantal Zenders / Kanalen</label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="3"
-                        value={offerFormData.transmittersCount}
-                        onChange={(e) =>
-                          setOfferFormData({
-                            ...offerFormData,
-                            transmittersCount: parseInt(e.target.value) || 1,
-                          })
-                        }
-                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
-                      />
-                    </div>
-
-                    {/* Disco Lights */}
-                    <div>
-                      <label className="block text-slate-300 font-semibold mb-1">Aantal Discolampen</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={offerFormData.discoLightsCount}
-                        onChange={(e) =>
-                          setOfferFormData({
-                            ...offerFormData,
-                            discoLightsCount: parseInt(e.target.value) || 0,
-                          })
-                        }
-                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
-                      />
-                    </div>
-
-                    {/* Fixed actieprijs */}
-                    <div>
-                      <label className="block text-amber-300 font-semibold mb-1">Vaste Actieprijs (€) *</label>
-                      <input
-                        type="number"
-                        step="0.50"
-                        value={offerFormData.fixedPrice}
-                        onChange={(e) =>
-                          setOfferFormData({
-                            ...offerFormData,
-                            fixedPrice: parseFloat(e.target.value) || 0,
-                          })
-                        }
-                        className="w-full bg-slate-950 border border-amber-500 rounded-xl px-3 py-2 text-white font-mono font-bold text-sm"
-                      />
-                    </div>
-
-                    {/* Oorspronkelijke prijs */}
-                    <div>
-                      <label className="block text-slate-300 font-semibold mb-1">Oorspronkelijke Prijs (€)</label>
-                      <input
-                        type="number"
-                        step="0.50"
-                        value={offerFormData.originalPrice}
-                        onChange={(e) =>
-                          setOfferFormData({
-                            ...offerFormData,
-                            originalPrice: parseFloat(e.target.value) || 0,
-                          })
-                        }
-                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
-                      />
-                    </div>
-
-                    {/* Rental duration days */}
-                    <div>
-                      <label className="block text-slate-300 font-semibold mb-1">Huurduur (Aantal Dagen)</label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={offerFormData.rentalDurationDays}
-                        onChange={(e) =>
-                          setOfferFormData({
-                            ...offerFormData,
-                            rentalDurationDays: parseInt(e.target.value) || 1,
-                          })
-                        }
-                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
-                      />
-                    </div>
-
                   </div>
 
-                  {/* Toggles: Weekend deal & Popular */}
-                  <div className="flex flex-wrap gap-4 text-xs pt-1">
-                    <label className="flex items-center gap-2 cursor-pointer p-2.5 rounded-xl bg-slate-950 border border-slate-800">
-                      <input
-                        type="checkbox"
-                        checked={offerFormData.isWeekendDeal}
-                        onChange={(e) => setOfferFormData({ ...offerFormData, isWeekendDeal: e.target.checked })}
-                        className="w-4 h-4 rounded text-cyan-400"
-                      />
-                      <span className="text-white font-medium">Geldt als Weekenddeal (Vrijdag t/m Maandag)</span>
-                    </label>
-
-                    <label className="flex items-center gap-2 cursor-pointer p-2.5 rounded-xl bg-slate-950 border border-slate-800">
-                      <input
-                        type="checkbox"
-                        checked={offerFormData.popular}
-                        onChange={(e) => setOfferFormData({ ...offerFormData, popular: e.target.checked })}
-                        className="w-4 h-4 rounded text-amber-400"
-                      />
-                      <span className="text-white font-medium">Markeer als "Meest Populair"</span>
-                    </label>
-
-                    <label className="flex items-center gap-2 cursor-pointer p-2.5 rounded-xl bg-slate-950 border border-slate-800">
-                      <input
-                        type="checkbox"
-                        checked={offerFormData.active}
-                        onChange={(e) => setOfferFormData({ ...offerFormData, active: e.target.checked })}
-                        className="w-4 h-4 rounded text-emerald-400"
-                      />
-                      <span className="text-white font-medium">Pakket Zichtbaar (Actief)</span>
-                    </label>
-                  </div>
-
-                  {/* Description */}
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      Pakket Omschrijving
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={offerFormData.description}
-                      onChange={(e) => setOfferFormData({ ...offerFormData, description: e.target.value })}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"
-                    />
-                  </div>
-
-                  {/* Features / Bullets builder */}
-                  <div className="space-y-2">
-                    <label className="block text-xs font-semibold text-slate-300">
-                      Inbegrepen Pluspunten (Bullets)
-                    </label>
-                    <div className="space-y-1.5">
-                      {offerFormData.features.map((feat, idx) => (
-                        <div key={idx} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-slate-950 border border-slate-800 text-xs">
-                          <span className="text-slate-200">✓ {feat}</span>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveFeatureFromOffer(idx)}
-                            className="text-slate-500 hover:text-rose-400 p-1"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="flex gap-2 pt-1">
-                      <input
-                        type="text"
-                        placeholder="Nieuw pluspunt toevoegen (bijv. Inclusief reservekoptelefoon)..."
-                        value={newFeatureText}
-                        onChange={(e) => setNewFeatureText(e.target.value)}
-                        className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleAddFeatureToOffer}
-                        className="px-4 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-white rounded-xl"
-                      >
-                        Toevoegen
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Submit buttons */}
-                  <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
+                  <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
                     <button
                       type="button"
-                      onClick={() => {
-                        setOfferFormData(null);
-                        setEditingOfferId(null);
-                      }}
-                      className="px-5 py-2.5 text-xs font-semibold text-slate-400 hover:text-white bg-slate-800 rounded-xl"
+                      onClick={() => setOfferFormData(null)}
+                      className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white bg-slate-800 rounded-xl cursor-pointer"
                     >
-                      Annuleren
+                      Sluiten
                     </button>
                     <button
                       type="submit"
-                      className="px-7 py-2.5 text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl shadow-md transition-all cursor-pointer"
+                      className="flex items-center gap-2 px-6 py-2 text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl cursor-pointer"
                     >
-                      Pakket Opslaan
+                      <Save className="w-4 h-4" />
+                      <span>Pakket Opslaan</span>
                     </button>
                   </div>
-
                 </form>
               </div>
             )}
 
-            {/* List of current packages with direct edit buttons */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Offers cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {offers.map((offer) => (
-                <div
-                  key={offer.id}
-                  className={`p-6 rounded-3xl border transition-all ${
-                    offer.active
-                      ? 'bg-slate-900 border-slate-800 shadow-xl'
-                      : 'bg-slate-900/40 border-slate-800/40 opacity-50'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div>
-                      <span className="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider block mb-1">
-                        {offer.badge} {offer.popular ? '· Populair' : ''}
+                <div key={offer.id} className="p-6 bg-slate-900 rounded-3xl border border-slate-800 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                        {offer.badge}
                       </span>
-                      <h3 className="text-lg font-bold text-white font-display">
-                        {offer.title}
-                      </h3>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenEditOffer(offer)}
-                        className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 transition-colors"
-                        title="Pakket bewerken"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => deleteOffer(offer.id)}
-                        className="p-2 rounded-xl bg-slate-800 hover:bg-rose-950 text-slate-500 hover:text-rose-400 transition-colors"
-                        title="Pakket verwijderen"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <p className="text-xs text-slate-400 leading-relaxed mb-4">
-                    {offer.description}
-                  </p>
-
-                  <div className="grid grid-cols-3 gap-2 p-3 rounded-2xl bg-slate-950 border border-slate-800 text-center text-xs mb-4">
-                    <div>
-                      <span className="text-[10px] text-slate-500 block">Koptelefoons</span>
-                      <span className="font-mono font-bold text-white">{offer.headphonesCount} stuks</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-500 block">Zenders</span>
-                      <span className="font-mono font-bold text-white">{offer.transmittersCount} kanalen</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-500 block">Huurduur</span>
-                      <span className="font-mono font-bold text-white">{offer.rentalDurationDays} dag(en)</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-800/80">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-2xl font-extrabold text-white font-mono tabular-nums">
-                        €{offer.fixedPrice.toFixed(2)}
+                      <span className="text-xs font-mono font-bold text-slate-400">
+                        {offer.headphonesCount} koptelefoons
                       </span>
-                      <span className="text-xs text-slate-500 line-through font-mono">
+                    </div>
+                    <h3 className="text-lg font-bold text-white mb-1">{offer.title}</h3>
+                    <p className="text-xs text-slate-400 mb-4">{offer.tagline}</p>
+                    <div className="text-2xl font-black text-cyan-300 font-mono mb-4">
+                      €{offer.fixedPrice.toFixed(2)}{' '}
+                      <span className="text-xs text-slate-500 line-through font-normal">
                         €{offer.originalPrice.toFixed(2)}
                       </span>
                     </div>
+                  </div>
 
+                  <div className="flex gap-2 pt-4 border-t border-slate-800">
                     <button
                       type="button"
-                      onClick={() => updateOffer(offer.id, { active: !offer.active })}
-                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
-                        offer.active
-                          ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
-                          : 'bg-slate-800 text-slate-400'
-                      }`}
+                      onClick={() => handleOpenEditOffer(offer)}
+                      className="flex-1 py-2 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-white rounded-xl cursor-pointer"
                     >
-                      {offer.active ? 'Actief' : 'Gedeactiveerd'}
+                      Bewerken
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteOffer(offer.id)}
+                      className="p-2 text-slate-400 hover:text-rose-400 bg-slate-800 hover:bg-slate-700 rounded-xl cursor-pointer"
+                    >
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
               ))}
             </div>
-
           </div>
         )}
 
         {/* ============================================================
-            SUB-TAB 3: BOEKINGEN & BESCHIKBAARHEID
+            SUB-TAB: BOEKINGEN & RESERVERINGEN (UITHOORN FOCUS)
            ============================================================ */}
         {adminSubTab === 'boekingen' && (
-          <div className="space-y-8">
-            
-            {/* KPI stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-              <div className="p-5 bg-slate-900 rounded-2xl border border-slate-800">
-                <span className="text-xs text-slate-400 block mb-1">Totaal Actieve Boekingen</span>
-                <span className="text-2xl font-bold font-mono text-white">{bookings.length}</span>
-              </div>
-
-              <div className="p-5 bg-slate-900 rounded-2xl border border-slate-800">
-                <span className="text-xs text-slate-400 block mb-1">Totale Voorraad</span>
-                <span className="text-2xl font-bold font-mono text-cyan-400">
-                  {settings.totalStockHeadphones} stuks
-                </span>
-              </div>
-
-              <div className="p-5 bg-slate-900 rounded-2xl border border-slate-800">
-                <span className="text-xs text-slate-400 block mb-1">Gereserveerde Koptelefoons</span>
-                <span className="text-2xl font-bold font-mono text-amber-400">
-                  {bookings.reduce((sum, b) => sum + b.cart.headphonesCount, 0)} stuks
-                </span>
-              </div>
-
-              <div className="p-5 bg-slate-900 rounded-2xl border border-slate-800">
-                <span className="text-xs text-slate-400 block mb-1">Totale Omzet (incl. BTW)</span>
-                <span className="text-2xl font-bold font-mono text-emerald-400">
-                  €{bookings.reduce((sum, b) => sum + b.pricingSummary.totalIncVat, 0).toFixed(2)}
-                </span>
-              </div>
-            </div>
-
-            {/* Filter & Action bar */}
-            <div className="p-4 bg-slate-900 rounded-2xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-2 overflow-x-auto">
-                <span className="text-xs text-slate-400 font-medium">Filter status:</span>
-                {(['all', 'confirmed', 'prepared', 'shipped', 'returned'] as const).map((st) => (
-                  <button
-                    key={st}
-                    onClick={() => setBookingFilter(st)}
-                    className={`px-3 py-1 text-xs font-semibold rounded-lg capitalize transition-colors ${
-                      bookingFilter === st
-                        ? 'bg-cyan-500 text-slate-950 font-bold'
-                        : 'bg-slate-950 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    {st === 'all' ? 'Alle Boekingen' : st}
-                  </button>
-                ))}
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 bg-slate-900 rounded-3xl border border-slate-800">
+              <div>
+                <h2 className="text-xl font-bold text-white font-display">
+                  Reserveringen & Afhaalbeheer Uithoorn
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  Bekijk alle lokale boekingen, status van koffers en registreer handmatig reserveringen.
+                </p>
               </div>
 
               <button
-                type="button"
                 onClick={() => setIsAddingManualBooking(true)}
-                className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-950 bg-cyan-400 hover:bg-cyan-300 rounded-xl transition-colors cursor-pointer self-start sm:self-auto"
+                className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-slate-950 bg-indigo-400 hover:bg-indigo-300 rounded-xl cursor-pointer shrink-0"
               >
                 <Plus className="w-4 h-4" />
-                <span>Handmatige Boeking / Blokkeer Datum</span>
+                <span>Handmatige Reservering Invoeren</span>
               </button>
             </div>
 
-            {/* Manual booking modal / inline form */}
+            {/* Manual booking modal */}
             {isAddingManualBooking && (
-              <div className="p-6 bg-slate-900 rounded-2xl border border-cyan-500/50 space-y-4">
+              <div className="p-6 bg-slate-900 rounded-3xl border-2 border-indigo-500 shadow-2xl space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                  <h3 className="text-sm font-bold text-cyan-300">Handmatige Boeking Toevoegen</h3>
-                  <button
-                    onClick={() => setIsAddingManualBooking(false)}
-                    className="text-xs text-slate-400 hover:text-slate-200"
-                  >
-                    Annuleren
+                  <h3 className="font-bold text-white text-base">Handmatige Boeking Toevoegen</h3>
+                  <button onClick={() => setIsAddingManualBooking(false)} className="text-slate-400 hover:text-white">
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
 
                 <form onSubmit={handleCreateManualBooking} className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                   <div>
-                    <label className="block text-slate-300 mb-1">Klantnaam *</label>
+                    <label className="block text-slate-300 font-semibold mb-1">Klantnaam *</label>
                     <input
                       type="text"
                       required
-                      placeholder="bijv. Sportclub Victoria"
                       value={manualBookingData.customerName}
                       onChange={(e) => setManualBookingData({ ...manualBookingData, customerName: e.target.value })}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
                     />
                   </div>
-
                   <div>
-                    <label className="block text-slate-300 mb-1">E-mail *</label>
+                    <label className="block text-slate-300 font-semibold mb-1">E-mail *</label>
                     <input
                       type="email"
                       required
-                      placeholder="info@victoria.nl"
                       value={manualBookingData.email}
                       onChange={(e) => setManualBookingData({ ...manualBookingData, email: e.target.value })}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
                     />
                   </div>
-
                   <div>
-                    <label className="block text-slate-300 mb-1">Aantal Koptelefoons</label>
+                    <label className="block text-slate-300 font-semibold mb-1">Woonplaats / Omstreken</label>
+                    <input
+                      type="text"
+                      value={manualBookingData.city}
+                      onChange={(e) => setManualBookingData({ ...manualBookingData, city: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 font-semibold mb-1">Aantal Koptelefoons</label>
                     <input
                       type="number"
+                      min="1"
                       value={manualBookingData.headphonesCount}
-                      onChange={(e) => setManualBookingData({ ...manualBookingData, headphonesCount: parseInt(e.target.value) || 10 })}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono"
+                      onChange={(e) => setManualBookingData({ ...manualBookingData, headphonesCount: parseInt(e.target.value) || 1 })}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
                     />
                   </div>
-
                   <div>
-                    <label className="block text-slate-300 mb-1">Startdatum</label>
-                    <input
-                      type="date"
-                      value={manualBookingData.startDate}
-                      onChange={(e) => setManualBookingData({ ...manualBookingData, startDate: e.target.value })}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-300 mb-1">Feestdatum</label>
+                    <label className="block text-slate-300 font-semibold mb-1">Feestdatum</label>
                     <input
                       type="date"
                       value={manualBookingData.eventDate}
                       onChange={(e) => setManualBookingData({ ...manualBookingData, eventDate: e.target.value })}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
                     />
                   </div>
-
                   <div>
-                    <label className="block text-slate-300 mb-1">Retourdatum</label>
+                    <label className="block text-slate-300 font-semibold mb-1">Gewenst Ophaalmoment</label>
                     <input
-                      type="date"
-                      value={manualBookingData.returnDate}
-                      onChange={(e) => setManualBookingData({ ...manualBookingData, returnDate: e.target.value })}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                      type="text"
+                      value={manualBookingData.pickupTimeSlot}
+                      onChange={(e) => setManualBookingData({ ...manualBookingData, pickupTimeSlot: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
                     />
                   </div>
 
-                  <div className="sm:col-span-3 flex justify-end gap-2 pt-2">
+                  <div className="sm:col-span-3 flex justify-end gap-3 pt-3 border-t border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingManualBooking(false)}
+                      className="px-4 py-2 text-slate-400 hover:text-white"
+                    >
+                      Annuleren
+                    </button>
                     <button
                       type="submit"
-                      className="px-5 py-2 text-xs font-bold text-slate-950 bg-cyan-400 hover:bg-cyan-300 rounded-lg transition-colors cursor-pointer"
+                      className="px-6 py-2 bg-indigo-500 hover:bg-indigo-400 text-white font-bold rounded-xl cursor-pointer"
                     >
-                      Boeking Opslaan
+                      Reservering Opslaan
                     </button>
                   </div>
                 </form>
               </div>
             )}
 
-            {/* Bookings List Table */}
-            <div className="bg-slate-900 rounded-3xl border border-slate-800 shadow-xl overflow-hidden">
+            {/* Bookings table */}
+            <div className="bg-slate-900 rounded-3xl border border-slate-800 overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-950 border-b border-slate-800 text-slate-400">
+                <table className="w-full text-left text-xs text-slate-300">
+                  <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
                     <tr>
-                      <th className="py-3.5 px-4 font-semibold">Boeking #</th>
-                      <th className="py-3.5 px-4 font-semibold">Klant</th>
-                      <th className="py-3.5 px-4 font-semibold">Data & Periode</th>
-                      <th className="py-3.5 px-4 font-semibold">Uitrusting</th>
-                      <th className="py-3.5 px-4 font-semibold">Bedrag</th>
-                      <th className="py-3.5 px-4 font-semibold">Betaling</th>
-                      <th className="py-3.5 px-4 font-semibold">Orderstatus</th>
-                      <th className="py-3.5 px-4 font-semibold text-right">Acties</th>
+                      <th className="px-6 py-4">ID & Datum</th>
+                      <th className="px-6 py-4">Klant & Locatie</th>
+                      <th className="px-6 py-4">Set & Zenders</th>
+                      <th className="px-6 py-4">Totaal (incl. Borg)</th>
+                      <th className="px-6 py-4">Status</th>
+                      <th className="px-6 py-4 text-right">Actie</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60">
-                    {filteredBookings.map((booking) => (
-                      <tr key={booking.id} className="hover:bg-slate-800/40 transition-colors">
-                        <td className="py-4 px-4 font-mono font-bold text-cyan-400 whitespace-nowrap">
-                          #{booking.id}
+                  <tbody className="divide-y divide-slate-800">
+                    {filteredBookings.map((b) => (
+                      <tr key={b.id} className="hover:bg-slate-800/40 transition-colors">
+                        <td className="px-6 py-4 font-mono">
+                          <span className="font-bold text-white block">{b.id}</span>
+                          <span className="text-[11px] text-slate-500">Feest: {b.eventDate}</span>
                         </td>
-                        <td className="py-4 px-4">
-                          <div className="font-semibold text-white">{booking.customerName}</div>
-                          <div className="text-[11px] text-slate-400">{booking.email}</div>
-                          <div className="text-[11px] text-slate-500">{booking.phone}</div>
+                        <td className="px-6 py-4">
+                          <span className="font-semibold text-white block">{b.customerName}</span>
+                          <span className="text-[11px] text-slate-400">{b.city || 'Uithoorn'} · {b.phone}</span>
                         </td>
-                        <td className="py-4 px-4 whitespace-nowrap">
-                          <div className="font-medium text-slate-200">
-                            Feest: {booking.eventDate}
-                          </div>
-                          <div className="text-[11px] text-slate-400">
-                            {booking.startDate} t/m {booking.returnDate}
-                          </div>
+                        <td className="px-6 py-4 font-mono">
+                          <span className="text-cyan-300 font-bold block">{b.cart.headphonesCount} koptelefoons</span>
+                          <span className="text-slate-400 text-[11px]">{b.cart.transmittersCount} zenders</span>
                         </td>
-                        <td className="py-4 px-4 whitespace-nowrap">
-                          <div className="font-bold text-white">
-                            {booking.cart.headphonesCount} koptelefoons
-                          </div>
-                          <div className="text-[11px] text-slate-400">
-                            {booking.cart.transmittersCount} zenders · {booking.deliveryType === 'delivery' ? 'PostNL' : 'Afhalen'}
-                          </div>
+                        <td className="px-6 py-4 font-mono font-bold text-white">
+                          €{b.pricingSummary.totalIncVat.toFixed(2)}
                         </td>
-                        <td className="py-4 px-4 font-mono font-bold text-white tabular-nums whitespace-nowrap">
-                          €{booking.pricingSummary.totalIncVat.toFixed(2)}
-                        </td>
-                        <td className="py-4 px-4 whitespace-nowrap">
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                              booking.paymentStatus === 'paid'
-                                ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
-                                : 'bg-amber-950 text-amber-300 border border-amber-800'
-                            }`}
-                          >
-                            {booking.paymentStatus} ({booking.paymentMethod})
-                          </span>
-                        </td>
-                        <td className="py-4 px-4 whitespace-nowrap">
+                        <td className="px-6 py-4">
                           <select
-                            value={booking.orderStatus}
-                            onChange={(e) => updateBookingStatus(booking.id, e.target.value as OrderStatus)}
-                            className="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none focus:border-cyan-400 cursor-pointer"
+                            value={b.orderStatus}
+                            onChange={(e) => updateBookingStatus(b.id, e.target.value as OrderStatus)}
+                            className="bg-slate-950 border border-slate-700 text-xs text-white rounded-lg px-2 py-1 focus:outline-none"
                           >
                             <option value="confirmed">Bevestigd</option>
-                            <option value="prepared">Klaargezet</option>
-                            <option value="shipped">Verzonden via PostNL</option>
-                            <option value="returned">Geretourneerd (Klaar)</option>
+                            <option value="prepared">Klaargezet in Uithoorn</option>
+                            <option value="ready_for_pickup">Klaar voor afhalen</option>
+                            <option value="returned">Geretourneerd & Borg Vrij</option>
                           </select>
                         </td>
-                        <td className="py-4 px-4 text-right whitespace-nowrap">
+                        <td className="px-6 py-4 text-right">
                           <button
-                            type="button"
-                            onClick={() => deleteBooking(booking.id)}
-                            className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-slate-950 transition-colors"
+                            onClick={() => deleteBooking(b.id)}
+                            className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-slate-800 cursor-pointer"
                             title="Verwijder boeking"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -1518,7 +1534,6 @@ export const AdminPanel: React.FC = () => {
                 </table>
               </div>
             </div>
-
           </div>
         )}
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useRental } from '../context/RentalContext';
-import { Sparkles, Check, ArrowRight, Tag, Settings, Clock, Headphones, Radio } from 'lucide-react';
+import { Sparkles, Check, ArrowRight, Tag, Settings, Headphones, Radio, MapPin } from 'lucide-react';
 import specialOfferImg from '../assets/images/silent_disco_special_offer_1793196647101.jpg';
 
 export const OffersSection: React.FC = () => {
@@ -19,23 +19,23 @@ export const OffersSection: React.FC = () => {
             <div className="lg:col-span-7 p-8 sm:p-12 z-10">
               <div className="flex items-center gap-2 text-xs font-semibold text-amber-400 tracking-wider uppercase mb-3">
                 <Sparkles className="w-4 h-4" />
-                <span>Exclusieve Silent Disco Voordeelpakketten</span>
+                <span>Exclusieve Silent Disco Pakketten Uithoorn</span>
               </div>
               <h1 className="text-3xl sm:text-5xl font-extrabold text-white font-display tracking-tight leading-tight mb-4" style={{ textWrap: 'balance' }}>
-                Knallende Aanbiedingen & Combi Deals
+                Aanbiedingen & Combi Deals Uithoorn
               </h1>
               <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-xl mb-6">
-                Profiteer van onze speciale samengestelde sets. Van een gezellig huisfeest met gratis discolamp tot ons legendarische weekendtarief waarbij je 3 dagen huurt voor de prijs van 1 dag!
+                Profiteer van onze speciaal samengestelde sets voor Uithoorn en omstreken. Inclusief ons populaire weekendvoordeel waarbij je vrijdag ophaalt en pas op maandag terugbrengt voor 1 dagtarief!
               </p>
               
               <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400">
                 <div className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-emerald-400" />
-                  <span>Altijd inclusief gratis aansluitkabels</span>
+                  <span>Altijd inclusief alle benodigde audiokabels</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-emerald-400" />
-                  <span>PostNL heen- en terugverzending</span>
+                  <MapPin className="w-4 h-4 text-pink-400" />
+                  <span>Zelf ophalen in Uithoorn (€0,- verzendkosten)</span>
                 </div>
               </div>
             </div>
@@ -62,7 +62,7 @@ export const OffersSection: React.FC = () => {
             <div>
               <div className="text-xs text-slate-400">Actieve kortingscodes:</div>
               <div className="text-sm font-semibold text-white">
-                Gebruik code <span className="font-mono text-cyan-300 bg-slate-800 px-2 py-0.5 rounded">SILENT10</span> voor 10% extra korting of <span className="font-mono text-pink-300 bg-slate-800 px-2 py-0.5 rounded">STUDENT2026</span> voor €15,- korting
+                Gebruik code <span className="font-mono text-cyan-300 bg-slate-800 px-2 py-0.5 rounded">UITHOORN10</span> voor 10% buurtkorting of <span className="font-mono text-pink-300 bg-slate-800 px-2 py-0.5 rounded">DISCOFEEST</span> voor €15,- korting
               </div>
             </div>
           </div>
@@ -72,12 +72,12 @@ export const OffersSection: React.FC = () => {
             className="flex items-center gap-2 px-3.5 py-2 text-xs font-medium text-emerald-300 bg-emerald-950/60 border border-emerald-800/60 rounded-xl hover:bg-emerald-900/60 transition-colors whitespace-nowrap shrink-0 self-start sm:self-auto cursor-pointer"
           >
             <Settings className="w-4 h-4" />
-            <span>Nieuwe Aanbieding Toevoegen</span>
+            <span>Pakketten & Deals Beheren</span>
           </button>
         </div>
 
         {/* Grid of Deal Offers */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
           {activeOffers.map((offer) => {
             const savings = offer.originalPrice - offer.fixedPrice;
             const savingsPercent = Math.round((savings / offer.originalPrice) * 100);
@@ -116,7 +116,7 @@ export const OffersSection: React.FC = () => {
                     <span>{offer.transmittersCount} Zenders</span>
                   </div>
 
-                  <h3 className="text-xl sm:text-2xl font-bold text-white font-display mb-2 pr-20">
+                  <h3 className="text-xl font-bold text-white font-display mb-2 pr-20">
                     {offer.title}
                   </h3>
 
@@ -180,7 +180,7 @@ export const OffersSection: React.FC = () => {
               Liever een specifiek aantal koptelefoons of maatwerk?
             </h3>
             <p className="text-xs sm:text-sm text-slate-400">
-              In onze calculator stel je elk willekeurig aantal samen tussen 10 en 350+ stuks met realtime automatische staffelkortingen.
+              In onze calculator stel je elk willekeurig aantal samen tussen 10 en 350+ stuks met automatische staffelkortingen. Af te halen op onze vaste locatie in Uithoorn.
             </p>
           </div>
           <button

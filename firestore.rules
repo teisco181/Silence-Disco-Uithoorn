@@ -1,0 +1,75 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default Deny Catch-All
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'teisco181@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Custom Products collection (Managed by Admin, viewable by customers)
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // User Profiles
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create, update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Chat Conversations between Customer & Admin
+    match /conversations/{conversationId} {
+      allow get: if isAdmin() || (isSignedIn() && (resource.data.customerId == request.auth.uid || conversationId == request.auth.uid));
+      allow list: if isAdmin() || (isSignedIn() && resource.data.customerId == request.auth.uid);
+      allow create: if isSignedIn() && (incoming().customerId == request.auth.uid || isAdmin());
+      allow update: if isAdmin() || (isSignedIn() && existing().customerId == request.auth.uid);
+      allow delete: if isAdmin();
+
+      // Messages in a conversation
+      match /messages/{messageId} {
+        allow get: if isAdmin() || (isSignedIn() && (get(/databases/$(database)/documents/conversations/$(conversationId)).data.customerId == request.auth.uid || conversationId == request.auth.uid));
+        allow list: if isAdmin() || (isSignedIn() && (get(/databases/$(database)/documents/conversations/$(conversationId)).data.customerId == request.auth.uid || conversationId == request.auth.uid));
+        allow create: if isSignedIn() && (incoming().senderId == request.auth.uid || isAdmin());
+        allow update, delete: if isAdmin();
+      }
+    }
+
+    // Bookings collection
+    match /bookings/{bookingId} {
+      allow get: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if incoming().customerName is string && incoming().headphonesCount is number;
+      allow update, delete: if isAdmin();
+    }
+  }
+}

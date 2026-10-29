@@ -8,11 +8,13 @@ import { HowItWorksSection } from './components/HowItWorksSection';
 import { AvailabilityCalendar } from './components/AvailabilityCalendar';
 import { AdminPanel } from './components/AdminPanel';
 import { BookingModal } from './components/BookingModal';
+import { AuthModal } from './components/AuthModal';
+import { ChatWidget } from './components/ChatWidget';
 import { Footer } from './components/Footer';
 import { Toast } from './components/Toast';
 
 const AppContent: React.FC = () => {
-  const { activeTab, setActiveTab, openBookingModal, cart } = useRental();
+  const { activeTab, setActiveTab, openBookingModal } = useRental();
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-cyan-500 selection:text-slate-950">
@@ -31,13 +33,13 @@ const AppContent: React.FC = () => {
             <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
               <div className="text-center max-w-2xl mx-auto">
                 <span className="text-xs font-semibold text-cyan-400 uppercase tracking-widest block mb-2">
-                  Realtime Voorraad & Kalender
+                  Realtime Voorraad Uithoorn
                 </span>
                 <h1 className="text-3xl sm:text-4xl font-extrabold text-white font-display">
                   Beschikbaarheid Silent Disco Sets
                 </h1>
                 <p className="text-sm text-slate-400 mt-2">
-                  Bekijk direct op welke dagen en weekenden er nog voldoende koptelefoons beschikbaar zijn. Klik op een datum om direct te reserveren!
+                  Bekijk direct op welke dagen en weekenden er nog voldoende koptelefoons beschikbaar zijn voor afhalen in Uithoorn.
                 </p>
               </div>
 
@@ -47,10 +49,10 @@ const AppContent: React.FC = () => {
               <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div>
                   <h3 className="font-bold text-white text-base">
-                    Grote groep of festival met 100+ koptelefoons?
+                    Grote groep, sportclub of tentfeest met 75+ koptelefoons?
                   </h3>
                   <p className="text-xs text-slate-400 mt-1">
-                    Wij adviseren om minimaal 2 tot 3 weken van tevoren te reserveren.
+                    Wij adviseren om tijdig te reserveren zodat de koffers voor je klaargezet kunnen worden.
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -81,6 +83,8 @@ const AppContent: React.FC = () => {
 
       <Footer />
       <BookingModal />
+      <AuthModal />
+      <ChatWidget />
       <Toast />
     </div>
   );
